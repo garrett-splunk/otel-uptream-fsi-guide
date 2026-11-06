@@ -8,6 +8,8 @@ x-otel: &otel
   OTEL_EXPORTER_OTLP_HEADERS: ${OTLP_HEADERS:-}
   OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${DEPLOY_ENV},service.version=1.0.0
   REDACT_IN_SDK: ${REDACT_IN_SDK:-false}
+  ACH_FAIL_RATE: ${ACH_FAIL_RATE:-0.06}
+  QB_FAIL_RATE: ${QB_FAIL_RATE:-0.03}
 
 x-service: &service
   build: ./app
@@ -41,6 +43,9 @@ services:
     command: ["python", "traffic.py"]
     environment:
       PORTAL_URL: http://portal-web:8080
+      TRAFFIC_WORKERS: ${TRAFFIC_WORKERS:-1}
+      TRAFFIC_PAUSE_SCALE: ${TRAFFIC_PAUSE_SCALE:-1}
+      MULTI_STATE_RATE: ${MULTI_STATE_RATE:-0.2}
     depends_on: [portal-web, payroll-api, tax-engine, ach-gateway, notification-svc, benefits-api, hr-api]
 
   # Only started with: ./run.sh collector

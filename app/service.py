@@ -37,6 +37,10 @@ FlaskInstrumentor().instrument_app(app)
 RequestsInstrumentor().instrument()
 
 
+ACH_FAIL_RATE = float(os.environ.get("ACH_FAIL_RATE", "0.06"))   # bank-network timeouts
+QB_FAIL_RATE = float(os.environ.get("QB_FAIL_RATE", "0.03"))     # quickbooks-api failures
+
+
 def svc(name):
     return os.environ.get("URL_" + name.upper().replace("-", "_"), f"http://{name}:8080")
 
@@ -164,7 +168,7 @@ elif ROLE == "ach-gateway":
         span = trace.get_current_span()
         telemetry.tag_sensitive(span, "bank.routing_number", "000000000")
         try:
-            external_call("bank-network", "submit-batch", 120, 400, fail_rate=0.06)
+            external_call("bank-network", "submit-batch", 120, 400, fail_rate=ACH_FAIL_RATE)
         except TimeoutError as exc:
             ach_seconds.record(time.time() - start, {"result": "error"})
             span.record_exception(exc)
@@ -199,7 +203,7 @@ elif ROLE == "hr-api":
     def hr_summary():
         db_call("hr-db", "SELECT", "employees")
         try:
-            external_call("quickbooks-api", "sync-ledger", 200, 600, fail_rate=0.03)
+            external_call("quickbooks-api", "sync-ledger", 200, 600, fail_rate=QB_FAIL_RATE)
         except TimeoutError as exc:
             trace.get_current_span().record_exception(exc)
             return jsonify({"error": "accounting sync failed"}), 502

@@ -19,7 +19,7 @@
 </div></header>
 <div class="progress" aria-hidden="true"><div class="progress__bar" id="progressBar"></div></div>
 <div class="page">
-<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#prereqs"><span class="num">1</span>Before you start</a></li><li><a href="#endpoints"><span class="num">2</span>us1 endpoint sheet</a></li></ul><p class="sidebar__group">Path A: Docker or local</p><ul><li><a href="#c1"><span class="num">3</span>SDK direct</a></li><li><a href="#c2"><span class="num">4</span>Via Collector</a></li><li><a href="#c3"><span class="num">5</span>Redaction</a></li><li><a href="#c4"><span class="num">6</span>Find the fault</a></li><li><a href="#c5"><span class="num">7</span>Metrics (optional)</a></li></ul><p class="sidebar__group">Wrap up</p><ul><li><a href="#debrief"><span class="num num--dash">-</span>Debrief: which one?</a></li><li><a href="#trouble"><span class="num num--dash">-</span>Troubleshooting</a></li><li><a href="#cleanup"><span class="num num--dash">-</span>Clean up</a></li></ul><p class="sidebar__group">Path B</p><ul><li><a href="kubernetes.html"><span class="num num--dash">-</span>Kubernetes demo &rarr;</a></li></ul></aside>
+<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#prereqs"><span class="num">1</span>Before you start</a></li><li><a href="#endpoints"><span class="num">2</span>us1 endpoint sheet</a></li></ul><p class="sidebar__group">Path A: Docker or local</p><ul><li><a href="#c1"><span class="num">3</span>SDK direct</a></li><li><a href="#c2"><span class="num">4</span>Via Collector</a></li><li><a href="#c3"><span class="num">5</span>Redaction</a></li><li><a href="#c4"><span class="num">6</span>Find the fault</a></li><li><a href="#c5"><span class="num">7</span>Metrics (optional)</a></li><li><a href="#sim"><span class="num num--dash">-</span>Optional: simulate data</a></li></ul><p class="sidebar__group">Wrap up</p><ul><li><a href="#debrief"><span class="num num--dash">-</span>Debrief: which one?</a></li><li><a href="#trouble"><span class="num num--dash">-</span>Troubleshooting</a></li><li><a href="#cleanup"><span class="num num--dash">-</span>Clean up</a></li></ul><p class="sidebar__group">Path B</p><ul><li><a href="kubernetes.html"><span class="num num--dash">-</span>Kubernetes demo &rarr;</a></li></ul></aside>
 <main id="content">
 <section id="overview">
 <p class="eyebrow">Hands-on challenge lab &middot; FSI &middot; us1</p>
@@ -185,6 +185,27 @@ service:
 </ul>
 <p><strong>Verify.</strong> In Metric Finder, search for <code>payroll_runs</code>. Chart it, split by <code>result</code> and by <code>deployment.environment</code>, and compare the two environments.</p>
 <div class="callout"><span class="callout__title">Temporality</span><p>The lab exports cumulative counters. If your own services use delta temporality, confirm the backend behaviour before relying on a rate chart.</p></div>
+</section>
+<section id="sim"><div class="step-meta"><span class="step-badge">Optional</span><span class="step-time">~10 min</span></div><h2>Optional: build out the service map</h2>
+<p>The default traffic is enough to prove the pipeline. To fill out the map, charts and tag views with a realistic amount of data, run the simulator. It uses the same seven services, sends to us1 in SDK-direct mode, and reads the token and realm from <code>.env</code>.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./simulate.sh [minutes] [workers] [profile]</code></pre></div>
+<div class="table-wrap"><table class=""><thead><tr><th>Argument</th><th>Meaning</th><th>Default</th></tr></thead><tbody><tr><td><code>minutes</code></td><td>How long to run. Fractions work, for example <code>0.5</code>.</td><td>10</td></tr><tr><td><code>workers</code></td><td>Parallel request loops. Each worker sends roughly 35 requests a minute.</td><td>4</td></tr><tr><td><code>profile</code></td><td><code>steady</code>, <code>busy</code> or <code>incident</code> (below).</td><td>steady</td></tr></tbody></table></div>
+<p>Each request starts about one trace, so 4 workers for 10 minutes sends about 1,500 traces.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Profile</th><th>What it does</th><th>Good for</th></tr></thead><tbody><tr><td><code>steady</code></td><td>Normal mix: about 20% slow multi-state payroll runs, 6% bank timeouts, 3% QuickBooks failures.</td><td>A healthy-looking map and baseline latency</td></tr><tr><td><code>busy</code></td><td>The same mix, with requests twice as often.</td><td>More volume in less time</td></tr><tr><td><code>incident</code></td><td>Bank timeouts jump to about 35% and 70% of payroll runs are multi-state.</td><td>A bad day to diagnose with <a href='#c4'>Challenge 4</a></td></tr></tbody></table></div>
+<h3>Examples</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./simulate.sh                  # 10 minutes, 4 workers, steady
+./simulate.sh 5 8 busy        # 5 minutes, 8 workers, twice the request rate
+./simulate.sh 3 4 incident    # 3 minutes of a bad day, then switch back to steady</code></pre></div>
+<p><strong>With Docker</strong>, set the same knobs when you start a mode:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>TRAFFIC_WORKERS=8 TRAFFIC_PAUSE_SCALE=0.5 ACH_FAIL_RATE=0.35 ./run.sh collector</code></pre></div>
+<p>The knobs are <code>TRAFFIC_WORKERS</code>, <code>TRAFFIC_PAUSE_SCALE</code> (0.5 means twice as fast), <code>MULTI_STATE_RATE</code>, <code>ACH_FAIL_RATE</code> and <code>QB_FAIL_RATE</code>.</p>
+<h3>What to check</h3>
+<ul>
+<li>The service map under <code>fsi-workshop-direct</code> fills in, with consistent latency per hop and a visible error rate on <code>ach-gateway</code> and <code>bank-network</code>.</li>
+<li>Tag Spotlight on <code>client.tenant_id</code> shows twelve tenants with similar volumes.</li>
+<li>After an <code>incident</code> run, the error and latency charts for <code>payroll-api</code> clearly step up. Run <code>steady</code> afterwards and watch them fall back.</li>
+</ul>
+<div class="callout callout--warning"><span class="callout__title">Mind the volume</span><p>Free Edition and sandbox orgs have usage limits, and traces count against them. Start small, then scale up. The data ages out of APM by itself (about 8 days by default). Stop a run at any time with Ctrl-C.</p></div>
 </section>
 <section id="debrief"><h2>Debrief: which one?</h2>
 <p>You now have evidence for both. Use it to fill in the decision table for your own environment.</p>

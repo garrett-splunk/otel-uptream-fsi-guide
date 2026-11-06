@@ -15,6 +15,7 @@ cp .env.example .env        # then set SPLUNK_REALM and SPLUNK_ACCESS_TOKEN (ING
 ./run.sh direct             # SDK exports straight to ingest        (Docker)
 ./run.sh collector          # SDK -> Collector -> ingest            (Docker)
 ./run-local.sh 120          # direct mode without Docker, 120 seconds
+./simulate.sh 10 4 steady   # optional: send more traces (minutes, workers, steady|busy|incident)
 ./run.sh down direct        # stop
 ```
 
@@ -29,6 +30,7 @@ cp .env.example .env        # then set SPLUNK_REALM and SPLUNK_ACCESS_TOKEN (ING
 | `collector/config.yaml` | Gateway Collector with central redaction |
 | `docker-compose.yml`, `run.sh` | Docker run path for both modes |
 | `run-local.sh` | No-Docker, direct-mode run path |
+| `simulate.sh` | Optional: send a larger volume of traces to fill out the service map (profiles: steady, busy, incident) |
 | `docs/` | The workshop guide (GitHub Pages) |
 
 ## Status
