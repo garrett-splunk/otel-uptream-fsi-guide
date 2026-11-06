@@ -4,69 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Upstream OTel to Splunk Observability Cloud</title>
-<meta name="description" content="A hands-on challenge lab: send OpenTelemetry traces and metrics from an FSI payroll platform to Splunk Observability Cloud, first straight from the SDK, then through a Collector.">
+<meta name="description" content="A hands-on challenge lab: send OpenTelemetry traces and metrics from an FSI payroll platform to Splunk Observability Cloud, straight from the SDK or through a Collector, in Docker or Kubernetes.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="hero">
-  <div class="wrap">
-    <p class="eyebrow">Hands-on challenge lab · FSI · us1</p>
-    <h1>Upstream OTel to Splunk Observability Cloud</h1>
-    <p class="lede">Your payroll platform already speaks OpenTelemetry. Should each service send straight to Splunk, or should everything go through a Collector? Run both against a live org, then decide with evidence.</p>
-    <p class="meta">About 60 minutes · Docker or Python 3 · a Splunk Observability Cloud org · all data synthetic</p>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header"><div class="site-header__inner">
+  <a class="brand" href="index.html"><span class="brand__mark">splunk&gt;</span><span class="brand__tag">upstream otel lab</span></a>
+  <div class="header-actions">
+    <a class="header-link header-link--primary" href="https://app.us1.signalfx.com/#/home" target="_blank" rel="noopener noreferrer">Observability Cloud (US1)</a>
+    <a class="header-link" href="kubernetes.html">Path B: Kubernetes</a>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme">&#9681;</button>
   </div>
-</header>
+</div></header>
+<div class="progress" aria-hidden="true"><div class="progress__bar" id="progressBar"></div></div>
+<div class="page">
+<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#prereqs"><span class="num">1</span>Before you start</a></li><li><a href="#endpoints"><span class="num">2</span>us1 endpoint sheet</a></li></ul><p class="sidebar__group">Path A: Docker or local</p><ul><li><a href="#c1"><span class="num">3</span>SDK direct</a></li><li><a href="#c2"><span class="num">4</span>Via Collector</a></li><li><a href="#c3"><span class="num">5</span>Redaction</a></li><li><a href="#c4"><span class="num">6</span>Find the fault</a></li><li><a href="#c5"><span class="num">7</span>Metrics (optional)</a></li></ul><p class="sidebar__group">Wrap up</p><ul><li><a href="#debrief"><span class="num num--dash">-</span>Debrief: which one?</a></li><li><a href="#trouble"><span class="num num--dash">-</span>Troubleshooting</a></li><li><a href="#cleanup"><span class="num num--dash">-</span>Clean up</a></li></ul><p class="sidebar__group">Path B</p><ul><li><a href="kubernetes.html"><span class="num num--dash">-</span>Kubernetes demo &rarr;</a></li></ul></aside>
+<main id="content">
+<section id="overview">
+<p class="eyebrow">Hands-on challenge lab &middot; FSI &middot; us1</p>
+<h1>Upstream OTel to Splunk Observability Cloud</h1>
+<p class="lead">Your payroll platform already speaks OpenTelemetry. Should each service send straight to Splunk, or should everything go through a Collector? Run both against a live org, then decide with evidence.</p>
+<p class="muted">About 60 minutes &middot; Docker or Python 3 (Path A), or a Kubernetes cluster (Path B) &middot; a Splunk Observability Cloud org &middot; all data synthetic</p>
 
-<div class="wrap layout">
-<nav class="toc" aria-label="Contents">
-  <strong>Contents</strong>
-  <a href="#briefing">0 · Briefing</a>
-  <a href="#prereqs">1 · Before you start</a>
-  <a href="#endpoints">2 · us1 endpoint sheet</a>
-  <a href="#c1">3 · Challenge 1: SDK direct</a>
-  <a href="#c2">4 · Challenge 2: Collector</a>
-  <a href="#c3">5 · Challenge 3: Redaction</a>
-  <a href="#c4">6 · Challenge 4: Find the fault</a>
-  <a href="#c5">7 · Challenge 5: Metrics</a>
-  <a href="#debrief">8 · Debrief: which one?</a>
-  <a href="#trouble">9 · Troubleshooting</a>
-  <a href="#cleanup">10 · Clean up</a>
-</nav>
+<h3>Choose your path</h3>
+<div class="paths">
+  <a class="path-card" href="#prereqs"><span class="tag">Path A &middot; this page</span><h3>Docker or local Python</h3><p>A seven-service payroll app. Compare SDK-direct against a Collector, redact sensitive fields, and find a planted fault.</p></a>
+  <a class="path-card" href="kubernetes.html"><span class="tag">Path B &middot; Kubernetes</span><h3>OpenTelemetry Demo on Kubernetes</h3><p>The demo shown to the customer: the OTel Demo Helm chart with an in-cluster Collector sending to Splunk Observability Cloud.</p></a>
+</div>
 
-<main>
-
-<section id="briefing">
-<h2>0 · Briefing</h2>
-<p><strong>The customer.</strong> Northstar Payroll (fictional) runs payroll, benefits and HR services. OpenTelemetry is already instrumented across most of the stack. They have an endpoint and a token and want to see traces in Splunk Observability Cloud.</p>
-<p><strong>The question.</strong> Two valid designs:</p>
-<div class="two">
-  <figure>
-    <svg viewBox="0 0 360 150" role="img" aria-label="Services send OTLP directly to Splunk ingest">
-      <rect x="10" y="20" width="110" height="26" rx="5" class="box"/><text x="65" y="38" class="t">service A</text>
-      <rect x="10" y="62" width="110" height="26" rx="5" class="box"/><text x="65" y="80" class="t">service B</text>
-      <rect x="10" y="104" width="110" height="26" rx="5" class="box"/><text x="65" y="122" class="t">service C</text>
-      <rect x="250" y="55" width="100" height="40" rx="6" class="dest"/><text x="300" y="72" class="t">Splunk ingest</text><text x="300" y="87" class="t s">us1</text>
-      <path d="M120 33 L250 68 M120 75 L250 75 M120 117 L250 82" class="arrow"/>
-    </svg>
-    <figcaption><strong>A · SDK direct.</strong> Every service holds the token and exports to the ingest endpoint itself.</figcaption>
-  </figure>
-  <figure>
-    <svg viewBox="0 0 360 150" role="img" aria-label="Services send OTLP to a Collector which forwards to Splunk ingest">
-      <rect x="10" y="20" width="90" height="26" rx="5" class="box"/><text x="55" y="38" class="t">service A</text>
-      <rect x="10" y="62" width="90" height="26" rx="5" class="box"/><text x="55" y="80" class="t">service B</text>
-      <rect x="10" y="104" width="90" height="26" rx="5" class="box"/><text x="55" y="122" class="t">service C</text>
-      <rect x="140" y="52" width="90" height="46" rx="6" class="col"/><text x="185" y="72" class="t">Collector</text><text x="185" y="87" class="t s">redact · batch</text>
-      <rect x="265" y="55" width="90" height="40" rx="6" class="dest"/><text x="310" y="72" class="t">Splunk ingest</text><text x="310" y="87" class="t s">us1</text>
-      <path d="M100 33 L140 66 M100 75 L140 75 M100 117 L140 84 M230 75 L265 75" class="arrow"/>
-    </svg>
-    <figcaption><strong>B · Via Collector.</strong> Services send plain OTLP to a local gateway. Only the Collector holds the token.</figcaption>
-  </figure>
+<h3>The customer</h3>
+<p>Northstar Payroll (fictional) runs payroll, benefits and HR services. OpenTelemetry is already instrumented across most of the stack. They have an endpoint and a token and want to see traces in Splunk Observability Cloud.</p>
+<h3>The question</h3>
+<p>There are two valid designs:</p>
+<div class="diagram-pair">
+<figure class="diagram"><svg viewBox="0 0 360 150" role="img" aria-label="Three services each send OTLP directly to Splunk ingest"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--ink-muted)"/></marker></defs>
+<rect x="10" y="18" width="110" height="28" rx="6" class="node"/><text x="65" y="37" class="lbl">service A</text>
+<rect x="10" y="60" width="110" height="28" rx="6" class="node"/><text x="65" y="79" class="lbl">service B</text>
+<rect x="10" y="102" width="110" height="28" rx="6" class="node"/><text x="65" y="121" class="lbl">service C</text>
+<rect x="245" y="53" width="105" height="44" rx="8" class="node-accent"/><text x="297" y="72" class="lbl">Splunk ingest</text><text x="297" y="87" class="sub">us1</text>
+<path d="M120 32 L243 66" class="arrow"/><path d="M120 74 L243 75" class="arrow"/><path d="M120 116 L243 84" class="arrow"/></svg><figcaption><strong>A &middot; SDK direct.</strong> Every service holds the token and exports to the ingest endpoint itself.</figcaption></figure>
+<figure class="diagram"><svg viewBox="0 0 360 150" role="img" aria-label="Three services send OTLP to a Collector which forwards to Splunk ingest"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--ink-muted)"/></marker></defs>
+<rect x="10" y="18" width="90" height="28" rx="6" class="node"/><text x="55" y="37" class="lbl">service A</text>
+<rect x="10" y="60" width="90" height="28" rx="6" class="node"/><text x="55" y="79" class="lbl">service B</text>
+<rect x="10" y="102" width="90" height="28" rx="6" class="node"/><text x="55" y="121" class="lbl">service C</text>
+<rect x="135" y="50" width="95" height="50" rx="8" class="node-warm"/><text x="182" y="72" class="lbl">Collector</text><text x="182" y="88" class="sub">redact, batch</text>
+<rect x="262" y="53" width="90" height="44" rx="8" class="node-accent"/><text x="307" y="72" class="lbl">Splunk ingest</text><text x="307" y="87" class="sub">us1</text>
+<path d="M100 32 L133 63" class="arrow"/><path d="M100 74 L133 75" class="arrow"/><path d="M100 116 L133 87" class="arrow"/><path d="M230 75 L260 75" class="arrow"/></svg><figcaption><strong>B &middot; Via Collector.</strong> Services send plain OTLP to a local gateway. Only the Collector holds the token.</figcaption></figure>
 </div>
 <p><strong>Your mission.</strong> Stand up the same seven-service app both ways, prove data lands in the right place, then answer: which design do you recommend to a regulated customer, and why?</p>
 
 <h3>The app you will run</h3>
 <p>Seven instrumented services plus six systems that appear as inferred nodes in the service map. The code is the same in both modes. Only environment variables change.</p>
-<pre class="plain">portal-web ─┬─► payroll-api ─┬─► tax-engine
+<pre class="tree">portal-web ─┬─► payroll-api ─┬─► tax-engine
             │                ├─► payroll-db          (inferred database)
             │                ├─► ach-gateway ─► bank-network   (inferred external)
             │                └─► notification-svc
@@ -75,113 +65,75 @@
             └─► hr-api ───────┬─► hr-db              (inferred database)
                               └─► quickbooks-api     (inferred, third party)</pre>
 <ul>
-  <li>Tenants are opaque ids (<code>tenant-0001</code> to <code>tenant-0012</code>), which is how a multi-client accountant portal would tag requests.</li>
-  <li>About 20% of runs are multi-state, which makes <code>tax-engine</code> slow. About 6% of ACH submissions time out at the bank.</li>
-  <li>Spans carry deliberately fake sensitive fields: <code>employee.ssn</code> (invalid 900- range), <code>bank.account_number</code> and <code>bank.routing_number</code> (zeros). You will redact them in Challenge 3.</li>
+<li>Tenants are opaque ids (<code>tenant-0001</code> to <code>tenant-0012</code>), which is how a multi-client accountant portal would tag requests.</li>
+<li>About 20% of runs are multi-state, which makes <code>tax-engine</code> slow. About 6% of ACH submissions time out at the bank.</li>
+<li>Spans carry deliberately fake sensitive fields: <code>employee.ssn</code> (invalid 900- range), <code>bank.account_number</code> and <code>bank.routing_number</code> (zeros). You redact them in Challenge 3.</li>
 </ul>
-<div class="note"><strong>Lab status.</strong> The SDK-direct path was run against a real us1 org and the data was confirmed in APM (all seven services and six inferred nodes). The Collector path is written to the same spec but has not yet been run end to end; treat Challenge 2 as the first live test of it.</div>
+<div class="callout callout--info"><span class="callout__title">Lab status</span><p>The SDK-direct path was run against a real us1 org and the data was confirmed in APM (all seven services and six inferred nodes). The Collector path is written to the same spec but has not yet been run end to end; treat Challenge 2 as its first live test. Path B follows the Kubernetes demo guide step for step.</p></div>
 </section>
-
-<section id="prereqs">
-<h2>1 · Before you start</h2>
+<section id="prereqs"><div class="step-meta"><span class="step-time">~5 min</span></div><h2>Before you start</h2>
 <h3>You need</h3>
 <ul>
-  <li>A Splunk Observability Cloud org and its <strong>realm</strong>. This lab uses <code>us1</code>. Find yours under your profile in the UI.</li>
-  <li>An <strong>org access token with the INGEST scope</strong>. Settings → Access Tokens → New Token → scope <em>Ingest</em>. Nothing else is needed to send data. Do not use an API-scope token for ingest.</li>
-  <li>Either Docker (Desktop or Engine) <em>or</em> Python 3.10+.</li>
+<li>A Splunk Observability Cloud org and its <strong>realm</strong>. This lab uses <code>us1</code>. Find yours under your profile in the UI.</li>
+<li>An <strong>org access token with the INGEST scope</strong>: Settings &rarr; Access Tokens &rarr; New Token &rarr; scope <em>Ingest</em>. Nothing else is needed to send data. Do not use an API-scope token for ingest.</li>
+<li>Docker (Desktop or Engine) <em>or</em> Python 3.10+.</li>
 </ul>
 <h3>Get the lab</h3>
-<pre data-copy>git clone https://github.com/garrett-splunk/otel-uptream-fsi-guide.git
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>git clone https://github.com/garrett-splunk/otel-uptream-fsi-guide.git
 cd otel-uptream-fsi-guide
-cp .env.example .env</pre>
+cp .env.example .env</code></pre></div>
 <h3>Where the token goes</h3>
 <p>Open <code>.env</code> and set the two values:</p>
-<pre data-copy>SPLUNK_REALM=us1
-SPLUNK_ACCESS_TOKEN=&lt;your ingest token&gt;</pre>
-<div class="warn"><strong>This repo is public.</strong> <code>.env</code> is git-ignored. Never paste a token into an HTML, YAML or script file, and never commit one. If a token leaks, rotate it in Settings → Access Tokens. Use a short-lived token for workshops.</div>
+<div class="code-block" data-copy><div class="code-block__header"><span>.env</span><button class="btn-copy" type="button">Copy</button></div><pre><code>SPLUNK_REALM=us1
+SPLUNK_ACCESS_TOKEN=&lt;your ingest token&gt;</code></pre></div>
+<div class="callout callout--warning"><span class="callout__title">This repo is public</span><p><code>.env</code> is git-ignored. Never paste a token into an HTML, YAML or script file, and never commit one. If a token leaks, rotate it in Settings &rarr; Access Tokens. Use a short-lived token for workshops.</p></div>
 </section>
-
-<section id="endpoints">
-<h2>2 · us1 endpoint sheet</h2>
+<section id="endpoints"><h2>us1 endpoint sheet</h2>
 <p>Keep this open. Every challenge uses these values.</p>
-<table>
-  <thead><tr><th>Signal</th><th>Method</th><th>URL (realm <code>us1</code>)</th></tr></thead>
-  <tbody>
-    <tr><td>Traces</td><td><code>POST</code> OTLP/HTTP protobuf</td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/trace/otlp</code></td></tr>
-    <tr><td>Metrics</td><td><code>POST</code> OTLP/HTTP protobuf</td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/datapoint/otlp</code></td></tr>
-    <tr><td>Auth header</td><td>HTTP header on every request</td><td><code>X-SF-Token: &lt;ingest token&gt;</code></td></tr>
-    <tr><td>Collector listens</td><td>inside the lab network</td><td><code>http://otel-collector:4318/v1/traces</code> and <code>/v1/metrics</code> (gRPC on 4317)</td></tr>
-  </tbody>
-</table>
+<div class="table-wrap"><table class=""><thead><tr><th>Signal</th><th>Method</th><th>URL (realm <code>us1</code>)</th></tr></thead><tbody><tr><td>Traces</td><td><code>POST</code> OTLP/HTTP protobuf</td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/trace/otlp</code></td></tr><tr><td>Metrics</td><td><code>POST</code> OTLP/HTTP protobuf</td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/datapoint/otlp</code></td></tr><tr><td>Auth header</td><td>HTTP header on every request</td><td><code>X-SF-Token: &lt;ingest token&gt;</code></td></tr><tr><td>Collector listens</td><td>inside the lab network</td><td><code>http://otel-collector:4318/v1/traces</code> and <code>/v1/metrics</code> (gRPC on 4317)</td></tr></tbody></table></div>
 <ul>
-  <li>Splunk accepts the older <code>ingest.us1.signalfx.com</code> hostname as well as <code>ingest.us1.observability.splunkcloud.com</code>. Use the newer one for new work. For another realm, replace <code>us1</code> everywhere.</li>
-  <li>The firewall rule an FSI network team needs is one outbound HTTPS (443) allow to <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>. In SDK-direct mode it applies to every host that runs a service. In Collector mode it applies only to the Collector host.</li>
-  <li>Splunk Observability Cloud also accepts gRPC on <code>ingest.&lt;realm&gt;.signalfx.com:443</code> for traces. This lab uses OTLP/HTTP.</li>
+<li>Splunk accepts the older <code>ingest.us1.signalfx.com</code> hostname as well as <code>ingest.us1.observability.splunkcloud.com</code>. Use the newer one for new work. For another realm, replace <code>us1</code> everywhere.</li>
+<li>The firewall rule an FSI network team needs is one outbound HTTPS (443) allow to <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>. In SDK-direct mode it applies to every host that runs a service. In Collector mode it applies only to the Collector host.</li>
+<li>Splunk Observability Cloud also accepts gRPC for traces on <code>ingest.&lt;realm&gt;.signalfx.com:443</code>. This lab uses OTLP/HTTP.</li>
 </ul>
-<p class="src">Sources: Splunk docs, <a href="https://help.splunk.com/en/splunk-observability-cloud/manage-data/splunk-distribution-of-the-opentelemetry-collector/get-started-with-the-splunk-distribution-of-the-opentelemetry-collector/collector-components/exporters/otlphttp-exporter">OTLP/HTTP exporter</a> and <a href="https://help.splunk.com/splunk-observability-cloud/manage-data/other-data-ingestion-methods/other-data-ingestion-methods/send-traces-to-splunk-observability-cloud-using-the-grpc-endpoint">Send traces using the gRPC endpoint</a>.</p>
+<p class="muted">Sources: Splunk docs, <a href="https://help.splunk.com/en/splunk-observability-cloud/manage-data/splunk-distribution-of-the-opentelemetry-collector/get-started-with-the-splunk-distribution-of-the-opentelemetry-collector/collector-components/exporters/otlphttp-exporter">OTLP/HTTP exporter</a> and <a href="https://help.splunk.com/splunk-observability-cloud/manage-data/other-data-ingestion-methods/other-data-ingestion-methods/send-traces-to-splunk-observability-cloud-using-the-grpc-endpoint">Send traces using the gRPC endpoint</a>.</p>
 </section>
-
-<section id="c1">
-<h2>3 · Challenge 1: SDK direct</h2>
-<p><span class="badge">Mission</span> Get all seven services sending straight to us1, with no Collector anywhere.</p>
-
+<section id="c1"><div class="step-meta"><span class="step-badge">Mission</span><span class="step-time">~15 min</span></div><h2>Challenge 1: SDK direct</h2>
+<p>Get all seven services sending straight to us1, with no Collector anywhere.</p>
 <h3>How it is wired</h3>
 <p>The services use the <strong>upstream</strong> OpenTelemetry Python SDK, not a Splunk distribution. The exporter reads standard OTel environment variables, so nothing about Splunk is in the code:</p>
-<pre class="plain">app/telemetry.py   →  OTLPSpanExporter()  and  OTLPMetricExporter()   (no arguments)</pre>
-<table>
-  <thead><tr><th>Variable</th><th>Value in direct mode</th></tr></thead>
-  <tbody>
-    <tr><td><code>OTEL_EXPORTER_OTLP_PROTOCOL</code></td><td><code>http/protobuf</code></td></tr>
-    <tr><td><code>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</code></td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/trace/otlp</code></td></tr>
-    <tr><td><code>OTEL_EXPORTER_OTLP_METRICS_ENDPOINT</code></td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/datapoint/otlp</code></td></tr>
-    <tr><td><code>OTEL_EXPORTER_OTLP_HEADERS</code></td><td><code>X-SF-Token=&lt;your ingest token&gt;</code></td></tr>
-    <tr><td><code>OTEL_SERVICE_NAME</code></td><td>one per service, for example <code>payroll-api</code></td></tr>
-    <tr><td><code>OTEL_RESOURCE_ATTRIBUTES</code></td><td><code>deployment.environment=fsi-workshop-direct,service.version=1.0.0</code></td></tr>
-  </tbody>
-</table>
-<div class="note"><strong>Why the full URLs matter.</strong> When you set the <em>signal-specific</em> variable (<code>..._TRACES_ENDPOINT</code>), the SDK uses it exactly as written. If you set only the generic <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>, the SDK appends <code>/v1/traces</code>, which is not Splunk's ingest path. That is the most common reason direct export silently fails.</div>
+<div class="code-block"><div class="code-block__header"><span>code</span></div><pre><code>app/telemetry.py  -&gt;  OTLPSpanExporter()  and  OTLPMetricExporter()   (no arguments)</code></pre></div>
+<div class="table-wrap"><table class=""><thead><tr><th>Variable</th><th>Value in direct mode</th></tr></thead><tbody><tr><td><code>OTEL_EXPORTER_OTLP_PROTOCOL</code></td><td><code>http/protobuf</code></td></tr><tr><td><code>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</code></td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/trace/otlp</code></td></tr><tr><td><code>OTEL_EXPORTER_OTLP_METRICS_ENDPOINT</code></td><td><code>https://ingest.us1.observability.splunkcloud.com/v2/datapoint/otlp</code></td></tr><tr><td><code>OTEL_EXPORTER_OTLP_HEADERS</code></td><td><code>X-SF-Token=&lt;your ingest token&gt;</code></td></tr><tr><td><code>OTEL_SERVICE_NAME</code></td><td>one per service, for example <code>payroll-api</code></td></tr><tr><td><code>OTEL_RESOURCE_ATTRIBUTES</code></td><td><code>deployment.environment=fsi-workshop-direct,service.version=1.0.0</code></td></tr></tbody></table></div>
+<div class="callout callout--tip"><span class="callout__title">Why the full URLs matter</span><p>When you set the <em>signal-specific</em> variable (<code>..._TRACES_ENDPOINT</code>), the SDK uses it exactly as written. If you set only the generic <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>, the SDK appends <code>/v1/traces</code>, which is not Splunk's ingest path. That is the most common reason direct export silently fails.</p></div>
 <p><code>deployment.environment</code> is what puts the data under an environment in APM. Leave it out and the services show up without a usable environment filter.</p>
-
 <h3>Run it</h3>
 <p><strong>With Docker:</strong></p>
-<pre data-copy>./run.sh direct</pre>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./run.sh direct</code></pre></div>
 <p><strong>Without Docker</strong> (runs the seven services as local Python processes for 2 minutes):</p>
-<pre data-copy>./run-local.sh 120</pre>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./run-local.sh 120</code></pre></div>
 <p>What the script does, step by step:</p>
 <ol>
-  <li>Loads <code>.env</code> and refuses to start if the token is still <code>REPLACE_ME</code>.</li>
-  <li>Builds the traces and metrics URLs from <code>SPLUNK_REALM</code>.</li>
-  <li>Sets <code>OTEL_EXPORTER_OTLP_HEADERS=X-SF-Token=...</code> and <code>deployment.environment=fsi-workshop-direct</code> for every service.</li>
-  <li>Starts the services and a traffic generator that posts payroll, benefits and HR requests for twelve synthetic tenants.</li>
+<li>Loads <code>.env</code> and refuses to start if the token is still <code>REPLACE_ME</code>.</li>
+<li>Builds the traces and metrics URLs from <code>SPLUNK_REALM</code>.</li>
+<li>Sets <code>OTEL_EXPORTER_OTLP_HEADERS=X-SF-Token=...</code> and <code>deployment.environment=fsi-workshop-direct</code> for every service.</li>
+<li>Starts the services and a traffic generator that posts payroll, benefits and HR requests for twelve synthetic tenants.</li>
 </ol>
-
 <h3>Predict, then verify</h3>
-<table class="pv">
-  <thead><tr><th>Predict first</th><th>Then check in Splunk</th></tr></thead>
-  <tbody>
-    <tr><td>How many services will appear in the map? How many are inferred?</td><td>APM → Service Map, environment <code>fsi-workshop-direct</code>. Expect 7 instrumented services and 6 inferred nodes.</td></tr>
-    <tr><td>Which two nodes are databases you never instrumented?</td><td>Look for <code>postgresql:payroll-db</code>, <code>postgresql:benefits-db</code>, <code>postgresql:hr-db</code>. The app only emits client spans with <code>db.system</code> and <code>db.name</code>.</td></tr>
-    <tr><td>Which hop is slowest?</td><td>Click <code>tax-engine</code>. p90 should be far above p50 (a long tail from multi-state runs).</td></tr>
-  </tbody>
-</table>
-<p><strong>Checkpoint.</strong> You pass Challenge 1 when the environment <code>fsi-workshop-direct</code> shows all seven services and a trace from <code>portal-web</code> spans at least four services.</p>
-<div class="note">UI labels vary a little between releases. If a menu is not where described, use the search box and the environment filter.</div>
+<div class="table-wrap"><table class="pv"><thead><tr><th>Predict first</th><th>Then check in Splunk</th></tr></thead><tbody><tr><td>How many services will appear in the map? How many are inferred?</td><td>APM &rarr; Service Map, environment <code>fsi-workshop-direct</code>. Expect 7 instrumented services and 6 inferred nodes.</td></tr><tr><td>Which nodes are databases you never instrumented?</td><td>Look for <code>postgresql:payroll-db</code>, <code>postgresql:benefits-db</code>, <code>postgresql:hr-db</code>. The app only emits client spans with <code>db.system</code> and <code>db.name</code>.</td></tr><tr><td>Which hop is slowest?</td><td>Click <code>tax-engine</code>. p90 should be far above p50 (a long tail from multi-state runs).</td></tr></tbody></table></div>
+<p><strong>Checkpoint.</strong> You pass Challenge 1 when <code>fsi-workshop-direct</code> shows all seven services and a trace from <code>portal-web</code> spans at least four services.</p>
+<div class="callout"><span class="callout__title">UI labels</span><p>Labels vary a little between releases. If a menu is not where described, use the search box and the environment filter.</p></div>
 </section>
-
-<section id="c2">
-<h2>4 · Challenge 2: Collector</h2>
-<p><span class="badge">Mission</span> Move the token out of the apps. Run the same services through a gateway Collector.</p>
-
+<section id="c2"><div class="step-meta"><span class="step-badge">Mission</span><span class="step-time">~15 min</span></div><h2>Challenge 2: Collector</h2>
+<p>Move the token out of the apps. Run the same services through a gateway Collector.</p>
 <h3>What changes</h3>
 <ul>
-  <li>The apps point at the Collector (<code>http://otel-collector:4318</code>) and carry <strong>no token</strong>.</li>
-  <li>The Collector holds the token and forwards to the same us1 endpoints.</li>
-  <li>The app code, the container image and the traffic are identical. Only the environment variables differ.</li>
+<li>The apps point at the Collector (<code>http://otel-collector:4318</code>) and carry <strong>no token</strong>.</li>
+<li>The Collector holds the token and forwards to the same us1 endpoints.</li>
+<li>The app code, the container image and the traffic are identical. Only the environment variables differ.</li>
 </ul>
-
 <h3>The Collector config</h3>
 <p>File: <code>collector/config.yaml</code> (upstream <code>otel/opentelemetry-collector-contrib</code>, pinned to 0.116.0).</p>
-<pre data-copy>exporters:
+<div class="code-block" data-copy><div class="code-block__header"><span>collector/config.yaml</span><button class="btn-copy" type="button">Copy</button></div><pre><code>exporters:
   otlphttp/splunk:
     traces_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/trace/otlp
     metrics_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/datapoint/otlp
@@ -193,135 +145,80 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, attributes/redact, batch]
-      exporters: [otlphttp/splunk, debug]</pre>
-<div class="note"><strong>Exporter name.</strong> Upstream 0.116.0 calls the exporter <code>otlphttp</code>. Splunk's own Collector distribution is renaming it to <code>otlp_http</code>. If you switch to the Splunk distribution later, change the name, not the URLs.</div>
-
+      exporters: [otlphttp/splunk, debug]</code></pre></div>
+<div class="callout"><span class="callout__title">Exporter name</span><p>Upstream 0.116.0 calls the exporter <code>otlphttp</code>. Splunk's own Collector distribution is renaming it to <code>otlp_http</code>. If you move to the Splunk distribution later, change the name, not the URLs.</p></div>
 <h3>Run it</h3>
-<pre data-copy>./run.sh down direct      # stop Challenge 1 if it is still running
-./run.sh collector</pre>
-<p>This sets the environment to <code>fsi-workshop-collector</code>. You can run both modes side by side if you want to compare them in one map: use <code>./run.sh direct</code> in one terminal and <code>./run.sh collector</code> in another, since each uses its own Docker project name.</p>
-
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./run.sh down direct      # stop Challenge 1 if it is still running
+./run.sh collector</code></pre></div>
+<p>This sets the environment to <code>fsi-workshop-collector</code>. To compare both in one map, run <code>./run.sh direct</code> in one terminal and <code>./run.sh collector</code> in another: each uses its own Docker project name.</p>
 <h3>Predict, then verify</h3>
-<table class="pv">
-  <thead><tr><th>Predict first</th><th>Then check</th></tr></thead>
-  <tbody>
-    <tr><td>Will the service map look different from Challenge 1?</td><td>It should be identical in shape, under environment <code>fsi-workshop-collector</code>.</td></tr>
-    <tr><td>Where would you look if nothing appears?</td><td><code>docker compose -p fsi-collector logs otel-collector</code>. The <code>debug</code> exporter prints a line per batch, and the exporter prints HTTP errors such as 401.</td></tr>
-    <tr><td>How many places now hold the token?</td><td>One. Run <code>grep -r SPLUNK_ACCESS_TOKEN docker-compose.yml</code> and confirm only the <code>otel-collector</code> service references it.</td></tr>
-  </tbody>
-</table>
-<p><strong>Checkpoint.</strong> Environment <code>fsi-workshop-collector</code> shows the same seven services, and no app container has the token in its environment.</p>
+<div class="table-wrap"><table class="pv"><thead><tr><th>Predict first</th><th>Then check</th></tr></thead><tbody><tr><td>Will the service map look different from Challenge 1?</td><td>It should be identical in shape, under environment <code>fsi-workshop-collector</code>.</td></tr><tr><td>Where would you look if nothing appears?</td><td><code>docker compose -p fsi-collector logs otel-collector</code>. The <code>debug</code> exporter prints a line per batch, and the exporter prints HTTP errors such as 401.</td></tr><tr><td>How many places now hold the token?</td><td>One. Run <code>grep -n SPLUNK_ACCESS_TOKEN docker-compose.yml</code> and confirm only the <code>otel-collector</code> service references it.</td></tr></tbody></table></div>
+<p><strong>Checkpoint.</strong> <code>fsi-workshop-collector</code> shows the same seven services, and no app container has the token in its environment.</p>
 </section>
-
-<section id="c3">
-<h2>5 · Challenge 3: Redaction</h2>
-<p><span class="badge">Mission</span> Payroll data includes SSNs and bank details. Make sure none of it reaches a SaaS backend, and compare how hard that is in each mode.</p>
+<section id="c3"><div class="step-meta"><span class="step-badge">Mission</span><span class="step-time">~10 min</span></div><h2>Challenge 3: Redaction</h2>
+<p>Payroll data includes SSNs and bank details. Make sure none of it reaches a SaaS backend, and compare how hard that is in each mode.</p>
 <p>Three services add fake sensitive attributes: <code>employee.ssn</code>, <code>bank.account_number</code> and <code>bank.routing_number</code>. The values are synthetic (<code>900-00-0001</code>, <code>0000012345</code>, <code>000000000</code>).</p>
 <ol>
-  <li><strong>Find the leak (direct mode).</strong> In <code>fsi-workshop-direct</code>, open any <code>payroll-api</code> trace, then the span for <code>POST /payroll/run</code>. You should see <code>employee.ssn</code> in clear text.</li>
-  <li><strong>Fix it in the app.</strong> Set <code>REDACT_IN_SDK=true</code> in <code>.env</code> and restart direct mode. The code path is <code>telemetry.tag_sensitive()</code>. Every service team must call it correctly for every sensitive field. Check a new trace: the value is <code>***REDACTED***</code>.</li>
-  <li><strong>Fix it centrally (Collector mode).</strong> With <code>REDACT_IN_SDK=false</code>, run <code>./run.sh collector</code>. The <code>attributes/redact</code> processor deletes the three keys for every service. Open a trace in <code>fsi-workshop-collector</code>: the keys are gone, even though the app still sets them.</li>
+<li><strong>Find the leak (direct mode).</strong> In <code>fsi-workshop-direct</code>, open a <code>payroll-api</code> trace, then the <code>POST /payroll/run</code> span. You should see <code>employee.ssn</code> in clear text.</li>
+<li><strong>Fix it in the app.</strong> Set <code>REDACT_IN_SDK=true</code> in <code>.env</code> and restart direct mode. The code path is <code>telemetry.tag_sensitive()</code>. Every service team must call it correctly for every sensitive field. A new trace shows <code>***REDACTED***</code>.</li>
+<li><strong>Fix it centrally (Collector mode).</strong> With <code>REDACT_IN_SDK=false</code>, run <code>./run.sh collector</code>. The <code>attributes/redact</code> processor deletes the three keys for every service. Open a trace in <code>fsi-workshop-collector</code>: the keys are gone even though the app still sets them.</li>
 </ol>
 <p><strong>Discuss.</strong> Which control would a security reviewer rather audit: forty services each masking correctly, or one reviewed Collector rule set? What happens when a developer adds a new sensitive field next quarter?</p>
-<div class="warn">A Collector rule set deletes attributes by <em>name</em>. It will not catch sensitive data in a field you did not list, or in a span name or a URL. Treat it as a safety net, not a substitute for not collecting data you do not need.</div>
+<div class="callout callout--warning"><span class="callout__title">Limits of a rule set</span><p>A Collector rule set deletes attributes by <em>name</em>. It will not catch sensitive data in a field you did not list, or in a span name or a URL. Treat it as a safety net, not a substitute for not collecting data you do not need.</p></div>
 </section>
-
-<section id="c4">
-<h2>6 · Challenge 4: Find the fault</h2>
-<p><span class="badge">Mission</span> A client says payroll runs are slow and occasionally fail. Use the data to find out why.</p>
+<section id="c4"><div class="step-meta"><span class="step-badge">Mission</span><span class="step-time">~10 min</span></div><h2>Challenge 4: Find the fault</h2>
+<p>A client says payroll runs are slow and occasionally fail. Use the data to find out why.</p>
 <ol>
-  <li>Open the map in either environment. Which service has the worst p90 latency?</li>
-  <li>Open Traces and filter by <code>payroll.jurisdiction</code>. Compare <code>single-state</code> against <code>multi-state</code>. Which one explains the slow requests?</li>
-  <li>Filter for errors. Follow a failed trace from <code>portal-web</code> down. Where does the error start? Look for the <code>bank-network</code> client span with status 504.</li>
-  <li>Use <code>client.tenant_id</code> to check whether one client is hit harder than the others. (With random traffic, expect no strong pattern. In a real accountant portal this is how you would find a client-specific problem.)</li>
+<li>Open the map in either environment. Which service has the worst p90 latency?</li>
+<li>Open Traces and filter by <code>payroll.jurisdiction</code>. Compare <code>single-state</code> with <code>multi-state</code>. Which one explains the slow requests?</li>
+<li>Filter for errors. Follow a failed trace from <code>portal-web</code> down. Where does the error start? Look for the <code>bank-network</code> client span with status 504.</li>
+<li>Use <code>client.tenant_id</code> to check whether one client is hit harder than the others. (With random traffic, expect no strong pattern. In a real accountant portal this is how you find a client-specific problem.)</li>
 </ol>
-<table class="pv">
-  <thead><tr><th>You should find</th><th>Cause built into the lab</th></tr></thead>
-  <tbody>
-    <tr><td>Slow <code>tax-engine</code>, long tail</td><td>Multi-state runs take 0.8 to 1.5 s instead of 30 to 90 ms.</td></tr>
-    <tr><td>Intermittent 502 from <code>payroll-api</code></td><td><code>ach-gateway</code> times out about 6% of the time because <code>bank-network</code> (external) is slow.</td></tr>
-    <tr><td>Occasional failure on HR summary</td><td><code>quickbooks-api</code> (third-party integration) fails about 3% of the time.</td></tr>
-  </tbody>
-</table>
+<div class="table-wrap"><table class="pv"><thead><tr><th>You should find</th><th>Cause built into the lab</th></tr></thead><tbody><tr><td>Slow <code>tax-engine</code>, long tail</td><td>Multi-state runs take 0.8 to 1.5 s instead of 30 to 90 ms.</td></tr><tr><td>Intermittent 502 from <code>payroll-api</code></td><td><code>ach-gateway</code> times out about 6% of the time because <code>bank-network</code> (external) is slow.</td></tr><tr><td>Occasional failure on HR summary</td><td><code>quickbooks-api</code> (third-party integration) fails about 3% of the time.</td></tr></tbody></table></div>
 <p>This is the business case in miniature: the service map and trace tags answer "which dependency, which tenant, which hop" without log searching.</p>
 </section>
-
-<section id="c5">
-<h2>7 · Challenge 5: Metrics (optional)</h2>
+<section id="c5"><div class="step-meta"><span class="step-badge">Optional</span><span class="step-time">~10 min</span></div><h2>Challenge 5: Metrics (optional)</h2>
 <p>Two custom metrics are exported the same way as traces: <code>payroll_runs</code> (counter, tagged <code>result</code>) and <code>ach_settlement_seconds</code> (histogram). Standard HTTP server and client metrics come from the instrumentation libraries.</p>
 <ul>
-  <li>Direct mode sends metrics to <code>/v2/datapoint/otlp</code> with the same header.</li>
-  <li>Collector mode sends them to the Collector's <code>/v1/metrics</code>, which forwards them to <code>/v2/datapoint/otlp</code>.</li>
+<li>Direct mode sends metrics to <code>/v2/datapoint/otlp</code> with the same header.</li>
+<li>Collector mode sends them to the Collector's <code>/v1/metrics</code>, which forwards them to <code>/v2/datapoint/otlp</code>.</li>
 </ul>
-<p><strong>Verify.</strong> In Metric Finder, search for <code>payroll_runs</code>. Chart it, split by <code>result</code> and by the <code>deployment.environment</code> dimension. Compare the two environments.</p>
-<div class="note">The lab exports cumulative counters. If your own services use delta temporality, confirm the backend behaviour before relying on a rate chart.</div>
+<p><strong>Verify.</strong> In Metric Finder, search for <code>payroll_runs</code>. Chart it, split by <code>result</code> and by <code>deployment.environment</code>, and compare the two environments.</p>
+<div class="callout"><span class="callout__title">Temporality</span><p>The lab exports cumulative counters. If your own services use delta temporality, confirm the backend behaviour before relying on a rate chart.</p></div>
 </section>
-
-<section id="debrief">
-<h2>8 · Debrief: which one?</h2>
+<section id="debrief"><h2>Debrief: which one?</h2>
 <p>You now have evidence for both. Use it to fill in the decision table for your own environment.</p>
-<table>
-  <thead><tr><th>Question</th><th>SDK direct</th><th>Via Collector</th></tr></thead>
-  <tbody>
-    <tr><td>Where does the token live?</td><td>On every host or container that runs a service</td><td>On the Collector only</td></tr>
-    <tr><td>Outbound firewall rules</td><td>Every service host needs an allow to ingest</td><td>One egress point</td></tr>
-    <tr><td>Redaction and attribute rules</td><td>In app code, per team</td><td>One central rule set</td></tr>
-    <tr><td>Change a destination or add a second backend</td><td>Redeploy every service</td><td>Edit the Collector config</td></tr>
-    <tr><td>Buffering and retry if the backend is unreachable</td><td>SDK queue only; data can be dropped on restart</td><td>Collector queue and retry (add persistent storage for more)</td></tr>
-    <tr><td>Extra moving parts</td><td>None</td><td>A service to run, size and patch</td></tr>
-    <tr><td>Host and infra metrics</td><td>Not collected</td><td>Collector can collect them</td></tr>
-    <tr><td>Fastest path to a proof of concept</td><td>Yes: two env vars</td><td>One extra container</td></tr>
-  </tbody>
-</table>
+<div class="table-wrap"><table class=""><thead><tr><th>Question</th><th>SDK direct</th><th>Via Collector</th></tr></thead><tbody><tr><td>Where does the token live?</td><td>On every host or container that runs a service</td><td>On the Collector only</td></tr><tr><td>Outbound firewall rules</td><td>Every service host needs an allow to ingest</td><td>One egress point</td></tr><tr><td>Redaction and attribute rules</td><td>In app code, per team</td><td>One central rule set</td></tr><tr><td>Change a destination or add a second backend</td><td>Redeploy every service</td><td>Edit the Collector config</td></tr><tr><td>Buffering and retry if the backend is unreachable</td><td>SDK queue only; data can be dropped on restart</td><td>Collector queue and retry (add persistent storage for more)</td></tr><tr><td>Extra moving parts</td><td>None</td><td>A service to run, size and patch</td></tr><tr><td>Host and infrastructure metrics</td><td>Not collected</td><td>Collector can collect them</td></tr><tr><td>Fastest path to a proof of concept</td><td>Yes: two environment variables</td><td>One extra container</td></tr></tbody></table></div>
 <h3>A reasonable default for a regulated customer</h3>
 <ul>
-  <li><strong>Proof of concept in one environment:</strong> SDK direct is fine and fastest, as long as the token is scoped to ingest and short lived.</li>
-  <li><strong>Anything beyond that:</strong> a gateway Collector. One egress path, one place to redact, no tokens in application config.</li>
+<li><strong>Proof of concept in one environment:</strong> SDK direct is fine and fastest, as long as the token is scoped to ingest and short lived.</li>
+<li><strong>Anything beyond that:</strong> a gateway Collector. One egress path, one place to redact, no tokens in application config. <a href="kubernetes.html">Path B</a> shows this pattern running in Kubernetes.</li>
 </ul>
-<p>The code does not change between the two, which is the point: you can start direct and move to a Collector by changing environment variables.</p>
+<p>The code does not change between the two, which is the point: start direct and move to a Collector by changing environment variables.</p>
 </section>
-
-<section id="trouble">
-<h2>9 · Troubleshooting</h2>
-<table>
-  <thead><tr><th>Symptom</th><th>Likely cause and fix</th></tr></thead>
-  <tbody>
-    <tr><td>Nothing in APM after 2 minutes</td><td>Wrong realm, or the environment filter in APM is set to something else. Check <code>SPLUNK_REALM</code> and select <code>fsi-workshop-direct</code> or <code>fsi-workshop-collector</code>.</td></tr>
-    <tr><td>HTTP 401 or 403 in service or Collector logs</td><td>Token missing, mistyped, expired, or not an ingest-scope token. Create a new ingest token and update <code>.env</code>.</td></tr>
-    <tr><td>Connection errors or timeouts</td><td>A proxy or firewall is blocking outbound 443 to <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>. Any HTTP response from that hostname proves the network path works.</td></tr>
-    <tr><td>Data arrives but nothing links across services</td><td>Context is not being propagated. In this lab it is handled by the <code>requests</code> instrumentation. In your own services, check that W3C trace context headers are forwarded.</td></tr>
-    <tr><td>Traces arrive but the SDK sends to <code>/v1/traces</code></td><td>You set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> instead of the signal-specific variable. Use <code>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</code> with the full URL.</td></tr>
-    <tr><td>Database or external node missing from the map</td><td>The client span needs <code>db.system</code> and <code>db.name</code> (databases) or <code>peer.service</code> (external systems).</td></tr>
-    <tr><td>Collector rejects the config</td><td>Check the exporter name for your Collector build (<code>otlphttp</code> upstream 0.116.0, <code>otlp_http</code> in newer Splunk distributions).</td></tr>
-  </tbody>
-</table>
+<section id="trouble"><h2>Troubleshooting</h2>
+<div class="table-wrap"><table class=""><thead><tr><th>Symptom</th><th>Likely cause and fix</th></tr></thead><tbody><tr><td>Nothing in APM after 2 minutes</td><td>Wrong realm, or the environment filter in APM is set to something else. Check <code>SPLUNK_REALM</code> and select <code>fsi-workshop-direct</code> or <code>fsi-workshop-collector</code>.</td></tr><tr><td>HTTP 401 or 403 in service or Collector logs</td><td>Token missing, mistyped, expired, or not an ingest-scope token. Create a new ingest token and update <code>.env</code>.</td></tr><tr><td>Connection errors or timeouts</td><td>A proxy or firewall is blocking outbound 443 to <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>. Any HTTP response from that hostname proves the network path works.</td></tr><tr><td>Data arrives but nothing links across services</td><td>Context is not being propagated. In this lab the <code>requests</code> instrumentation handles it. In your own services, check that W3C trace context headers are forwarded.</td></tr><tr><td>The SDK sends to <code>/v1/traces</code></td><td>You set <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> instead of the signal-specific variable. Use <code>OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</code> with the full URL.</td></tr><tr><td>Database or external node missing from the map</td><td>The client span needs <code>db.system</code> and <code>db.name</code> (databases) or <code>peer.service</code> (external systems).</td></tr><tr><td>Collector rejects the config</td><td>Check the exporter name for your Collector build (<code>otlphttp</code> in upstream 0.116.0, <code>otlp_http</code> in newer Splunk distributions).</td></tr></tbody></table></div>
 </section>
-
-<section id="cleanup">
-<h2>10 · Clean up</h2>
-<pre data-copy>./run.sh down direct
-./run.sh down collector</pre>
+<section id="cleanup"><h2>Clean up</h2>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>./run.sh down direct
+./run.sh down collector</code></pre></div>
 <ul>
-  <li>Delete or rotate the access token you used (Settings → Access Tokens).</li>
-  <li>The sandbox data ages out by itself. Nothing in this lab is real customer data.</li>
-  <li>If you leave a Free Edition org idle, remember Splunk's terms allow inactive orgs to be removed.</li>
+<li>Delete or rotate the access token you used (Settings &rarr; Access Tokens).</li>
+<li>The sandbox data ages out by itself. Nothing in this lab is real customer data.</li>
+<li>If you leave a Free Edition org idle, Splunk's terms allow inactive orgs to be removed.</li>
 </ul>
 <h3>Take it to a real customer</h3>
 <ol>
-  <li>Swap in the customer's realm and an ingest token scoped to a pilot.</li>
-  <li>Point one non-production environment at a Collector first.</li>
-  <li>Agree a redaction list with their security team before any data leaves the network.</li>
-  <li>Use the Debrief table as the agenda for the design conversation.</li>
+<li>Swap in the customer's realm and an ingest token scoped to a pilot.</li>
+<li>Point one non-production environment at a Collector first.</li>
+<li>Agree a redaction list with their security team before any data leaves the network.</li>
+<li>Use the debrief table as the agenda for the design conversation.</li>
 </ol>
 </section>
-
 </main>
 </div>
-
-<footer class="wrap foot">
-  <p>All services, tenants, SSNs and bank values in this lab are synthetic. Endpoint details were checked against Splunk's public documentation; verify against the current docs before production use.</p>
-</footer>
-
+<footer class="site-footer">All services, tenants, SSNs and bank values in this lab are synthetic. Endpoint details were checked against Splunk's public documentation; verify against the current docs before production use.</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="app.js"></script>
 </body>
 </html>

@@ -2,7 +2,9 @@
 
 Hands-on lab: send OpenTelemetry traces and metrics from a synthetic FSI payroll platform (seven services) to Splunk Observability Cloud, first **straight from the SDK**, then **through a Collector**, and compare the two.
 
-Guide (GitHub Pages, served from `/docs`): see `docs/index.html`.
+Guide (GitHub Pages, served from `/docs`):
+- `docs/index.html`: Path A, Docker or local Python (SDK direct vs Collector, redaction, find the fault).
+- `docs/kubernetes.html`: Path B, the OpenTelemetry Demo on Kubernetes with an in-cluster Collector. Adapted from the OpenTelemetry Kubernetes Demo workshop guide; not run from this repo.
 
 ## Quick start
 

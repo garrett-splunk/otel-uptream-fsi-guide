@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path B: OpenTelemetry Demo on Kubernetes</title>
+<meta name="description" content="Deploy the OpenTelemetry Demo to Kubernetes with an in-cluster Collector that sends traces and metrics to Splunk Observability Cloud.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header class="site-header"><div class="site-header__inner">
+  <a class="brand" href="index.html"><span class="brand__mark">splunk&gt;</span><span class="brand__tag">upstream otel lab</span></a>
+  <div class="header-actions">
+    <a class="header-link header-link--primary" href="https://app.us1.signalfx.com/#/home" target="_blank" rel="noopener noreferrer">Observability Cloud (US1)</a>
+    <a class="header-link" href="index.html">Path A: Docker or local</a>
+    <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme">&#9681;</button>
+  </div>
+</div></header>
+<div class="progress" aria-hidden="true"><div class="progress__bar" id="progressBar"></div></div>
+<div class="page">
+<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#preflight"><span class="num">1</span>Pre-flight</a></li></ul><p class="sidebar__group">Deploy</p><ul><li><a href="#clone"><span class="num">2</span>Clone demo repo</a></li><li><a href="#values"><span class="num">3</span>splunk-values.yaml</a></li><li><a href="#install"><span class="num">4</span>Install</a></li><li><a href="#verify"><span class="num">5</span>Watch and verify</a></li></ul><p class="sidebar__group">Confirm in Splunk</p><ul><li><a href="#access"><span class="num">6</span>Access (optional)</a></li><li><a href="#o11y"><span class="num">7</span>Find data in O11y</a></li><li><a href="#wrapup"><span class="num num--dash">-</span>Wrap-up</a></li></ul><p class="sidebar__group">Reference</p><ul><li><a href="#cleanup"><span class="num">8</span>Cleanup</a></li><li><a href="#customer"><span class="num num--dash">-</span>Adapting for a customer</a></li><li><a href="#diagnostics"><span class="num num--dash">-</span>Diagnostics</a></li><li><a href="#errors"><span class="num num--dash">-</span>Common errors</a></li></ul><p class="sidebar__group">Path A</p><ul><li><a href="index.html"><span class="num num--dash">-</span>&larr; Docker or local</a></li></ul></aside>
+<main id="content">
+<section id="overview">
+<p class="eyebrow">Path B &middot; Kubernetes &middot; us1</p>
+<h1>Deploy the OpenTelemetry Demo to Kubernetes</h1>
+<p class="lead">The same demo shown to the customer: about twenty microservices already instrumented with OpenTelemetry, sending OTLP to an in-cluster Collector that tags every signal and exports to Splunk Observability Cloud.</p>
+<p class="muted">About 40 minutes &middot; a Kubernetes cluster with <code>kubectl</code> and <code>helm</code> &middot; an ingest token</p>
+<figure class="diagram"><svg viewBox="0 0 640 170" role="img" aria-label="Demo microservices send OTLP to an in-cluster Collector that tags and exports to Splunk Observability Cloud"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor" style="color:var(--ink-muted)"/></marker></defs>
+<rect x="10" y="20" width="210" height="130" rx="10" class="node"/><text x="115" y="40" class="lbl">otel-demo namespace</text>
+<rect x="28" y="52" width="86" height="26" rx="5" class="node"/><text x="71" y="69" class="sub">frontend</text>
+<rect x="120" y="52" width="86" height="26" rx="5" class="node"/><text x="163" y="69" class="sub">cart, checkout</text>
+<rect x="28" y="88" width="86" height="26" rx="5" class="node"/><text x="71" y="105" class="sub">payment</text>
+<rect x="120" y="88" width="86" height="26" rx="5" class="node"/><text x="163" y="105" class="sub">+ 15 more</text>
+<text x="115" y="136" class="sub">OTLP traces and metrics</text>
+<rect x="270" y="50" width="170" height="70" rx="10" class="node-warm"/><text x="355" y="74" class="lbl">in-cluster Collector</text><text x="355" y="92" class="sub">resource/lab tags every signal</text><text x="355" y="106" class="sub">adds your token</text>
+<rect x="490" y="30" width="140" height="44" rx="8" class="node-accent"/><text x="560" y="49" class="lbl">APM traces</text><text x="560" y="64" class="sub">otlphttp/signalfx</text>
+<rect x="490" y="96" width="140" height="44" rx="8" class="node-accent"/><text x="560" y="115" class="lbl">Metrics</text><text x="560" y="130" class="sub">signalfx exporter</text>
+<path d="M220 85 L268 85" class="arrow"/><path d="M440 72 L488 55" class="arrow"/><path d="M440 98 L488 116" class="arrow"/></svg><figcaption>Demo microservices send OTLP to the in-cluster Collector. The Collector's <code>resource/lab</code> processor stamps every signal, then traces go out through <code>otlphttp/signalfx</code> and metrics through the <code>signalfx</code> exporter.</figcaption></figure>
+<div class="callout callout--info"><span class="callout__title">How this relates to Path A</span><p>This is the <a href="index.html#c2">Collector design</a> from Path A, running as a Kubernetes agent: the apps carry no token, and only the Collector holds it. To compare it with SDK-direct export, use Path A.</p></div>
+<div class="callout"><span class="callout__title">Based on the OpenTelemetry Kubernetes Demo guide</span><p>The steps and commands follow <a href="https://garrett-splunk.github.io/OpenTelemetry-Kubernetes-Demo/">the OpenTelemetry Kubernetes Demo workshop guide</a>, adapted so you can run it on your own cluster. That guide assumes a prepared workshop host where <code>REALM</code>, <code>ACCESS_TOKEN</code> and <code>INSTANCE</code> are already set. Here you set them yourself in Step 1.</p></div>
+<h3>Milestones</h3>
+<div class="table-wrap"><table class=""><thead><tr><th>Milestone</th><th>Evidence</th></tr></thead><tbody><tr><td>Demo running in Kubernetes</td><td>All pods Running in Step 5</td></tr><tr><td>Collector exporting cleanly</td><td>No 401 or 404 errors in Collector logs</td></tr><tr><td>Traces in APM</td><td>Your services on the Service Map (Step 7)</td></tr><tr><td>Metrics ingested</td><td><code>lab.id</code> metrics plotting in Metric Finder</td></tr><tr><td>Tags applied correctly</td><td><code>lab.owner</code> and <code>deployment.environment</code> in Tag Spotlight</td></tr></tbody></table></div>
+</section>
+<section id="preflight"><div class="step-meta"><span class="step-badge">Step 1</span><span class="step-time">~5 min</span></div><h2>Pre-flight</h2>
+<p>You need a Kubernetes cluster you can reach with <code>kubectl</code>, plus <code>helm</code> and <code>git</code>. The workshop used a three-node k3d cluster; <code>kind</code>, <code>minikube</code> or a cloud cluster also work. Check the <a href="https://github.com/open-telemetry/opentelemetry-demo">OpenTelemetry Demo</a> requirements for cluster size.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl get nodes</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>NAME                            STATUS   ROLES                  AGE   VERSION
+k3d-shw-455e-cluster-agent-0    Ready    &lt;none&gt;                 5d    v1.33.4+k3s1
+k3d-shw-455e-cluster-agent-1    Ready    &lt;none&gt;                 5d    v1.33.4+k3s1
+k3d-shw-455e-cluster-server-0   Ready    control-plane,master   5d    v1.33.4+k3s1</code></pre></div>
+<h3>Set three variables, and where the token goes</h3>
+<p>The install command in Step 4 reads three shell variables. They live only in your terminal session, so there is no file to leak.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>export REALM=us1
+read -rs ACCESS_TOKEN &amp;&amp; export ACCESS_TOKEN     # paste your INGEST token, press Enter (it is not echoed)
+export INSTANCE=northstar-01                      # short id: lowercase letters, digits, hyphens</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>echo &quot;REALM=$REALM&quot;
+[ -n &quot;$ACCESS_TOKEN&quot; ] &amp;&amp; echo &quot;TOKEN: set&quot; || echo &quot;TOKEN: MISSING&quot;
+echo &quot;INSTANCE=$INSTANCE&quot;</code></pre></div>
+<div class="callout"><span class="callout__title">Key idea</span><p><code>INSTANCE</code> becomes <code>lab.id</code>. Resource attributes on the Collector tag every signal with it, so you can filter to your demo in Observability Cloud even if other people share the org.</p></div>
+<div class="callout callout--warning"><span class="callout__title">Token type</span><p>Use an org access token with the <strong>Ingest</strong> scope. An API-scope token returns 401 at the ingest endpoint.</p></div>
+</section>
+<section id="clone"><div class="step-meta"><span class="step-badge">Step 2</span><span class="step-time">~5 min</span></div><h2>Clone the demo repo</h2>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>cd ~ &amp;&amp; git clone https://github.com/open-telemetry/opentelemetry-demo.git
+cd opentelemetry-demo</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo update</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl create namespace otel-demo</code></pre></div>
+</section>
+<section id="values"><div class="step-meta"><span class="step-badge">Step 3</span><span class="step-time">~5 min</span></div><h2>Create splunk-values.yaml</h2>
+<p>This file adds two Splunk exporters and a processor to the demo's Collector and wires them into the traces and metrics pipelines. Save it as <code>splunk-values.yaml</code> in the <code>opentelemetry-demo</code> directory.</p>
+<div class="callout callout--tip"><span class="callout__title">Empty strings are intentional</span><p>Realm, token and resource attribute values are injected at install time by the <code>--set-string</code> flags in Step 4. You do not paste secrets into this file.</p></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>splunk-values.yaml</span><button class="btn-copy" type="button">Copy</button></div><pre><code>opentelemetry-collector:
+  config:
+    exporters:
+      otlphttp/signalfx:
+        traces_endpoint: &quot;&quot;
+        headers:
+          X-SF-Token: &quot;&quot;
+          Content-Type: &quot;application/x-protobuf&quot;
+      signalfx:
+        realm: &quot;&quot;
+        access_token: &quot;&quot;
+    processors:
+      resource/lab:
+        attributes:
+          - key: lab.id
+            value: &quot;&quot;        # Index [0]
+            action: upsert
+          - key: lab.owner
+            value: &quot;&quot;        # Index [1]
+            action: upsert
+          - key: k8s.cluster.name
+            value: &quot;&quot;        # Index [2]
+            action: upsert
+          - key: deployment.environment
+            value: &quot;&quot;        # Index [3]
+            action: upsert
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, resource/lab, transform, batch]
+          exporters: [otlp/jaeger, debug, spanmetrics, otlphttp/signalfx]
+        metrics:
+          receivers: [otlp, kafkametrics, spanmetrics]
+          processors: [memory_limiter, resourcedetection, resource, resource/lab, batch]
+          exporters: [otlphttp/prometheus, debug, signalfx]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resourcedetection, resource, resource/lab, batch]
+          exporters: [opensearch, debug]</code></pre></div>
+<p>The attribute index in the install command refers to the position of each attribute above:</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Index</th><th>Key</th><th>Set at install to</th></tr></thead><tbody><tr><td>[0]</td><td><code>lab.id</code></td><td><code>${INSTANCE}</code></td></tr><tr><td>[1]</td><td><code>lab.owner</code></td><td>your name, no spaces</td></tr><tr><td>[2]</td><td><code>k8s.cluster.name</code></td><td><code>${INSTANCE}-cluster</code></td></tr><tr><td>[3]</td><td><code>deployment.environment</code></td><td><code>workshop-${INSTANCE}</code></td></tr></tbody></table></div>
+<p>Why these endpoints: traces use the same OTLP/HTTP ingest path as Path A (<code>/v2/trace/otlp</code>, with the <code>X-SF-Token</code> header). This guide's tested config sends metrics through Splunk's <code>signalfx</code> exporter, which needs only the realm and token. Sending metrics as OTLP to <code>/v2/datapoint/otlp</code> (Path A) is also supported.</p>
+<div class="callout"><span class="callout__title">Logs stay in the demo</span><p>The logs pipeline goes to the demo's own OpenSearch and the <code>debug</code> exporter, not to Splunk. Splunk Log Observer is not part of this setup.</p></div>
+</section>
+<section id="install"><div class="step-meta"><span class="step-badge">Step 4</span><span class="step-time">~10 min</span></div><h2>Install</h2>
+<div class="callout callout--warning"><span class="callout__title">Set lab.owner to your name</span><p>Replace <code>&lt;your name, no spaces&gt;</code> in the command below. It is how you will find your application in Observability Cloud.</p></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm install otel-demo open-telemetry/opentelemetry-demo \
+  -n otel-demo --create-namespace \
+  -f splunk-values.yaml \
+  --set-string &quot;opentelemetry-collector.config.exporters.otlphttp/signalfx.traces_endpoint=https://ingest.${REALM}.signalfx.com/v2/trace/otlp&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.otlphttp/signalfx.headers.X-SF-Token=${ACCESS_TOKEN}&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.signalfx.realm=${REALM}&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.signalfx.access_token=${ACCESS_TOKEN}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[0].value=${INSTANCE}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[2].value=${INSTANCE}-cluster&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[3].value=workshop-${INSTANCE}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[1].value=&lt;your name, no spaces&gt;&quot;</code></pre></div>
+<p>The traces endpoint above uses the <code>signalfx.com</code> hostname that this demo was tested with. For us1 the equivalent newer hostname is <code>ingest.us1.observability.splunkcloud.com</code>; both are accepted.</p>
+</section>
+<section id="verify"><div class="step-meta"><span class="step-badge">Step 5</span><span class="step-time">~5-10 min</span></div><h2>Watch and verify</h2>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo get pods -w   # wait for Running pods</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>NAME                               READY   STATUS    RESTARTS   AGE
+accounting-56f74b4f9c-d2dps        1/1     Running   0          111s
+frontend-7fb77f987-d92vd           1/1     Running   0          111s
+otel-collector-agent-28667         1/1     Running   0          111s
+...
+# All pods should show Running</code></pre></div>
+<p>Then check the Collector for export errors:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo logs ds/otel-collector-agent --tail=50 | grep -iE &quot;error|404|401&quot;</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>Found 3 pods, using pod/otel-collector-agent-9xwd8
+# (no matching lines: silence is good)</code></pre></div>
+<div class="callout"><span class="callout__title">Lots of output?</span><p>If you get many matching lines, the Collector has a problem. See <a href="#errors">Common errors</a>.</p></div>
+</section>
+<section id="access"><div class="step-meta"><span class="step-badge">Step 6</span></div><h2>Access the demo (optional)</h2>
+<div class="callout"><span class="callout__title">Localhost often does not work</span><p>Port-forwarding to <code>localhost:8080</code> frequently fails in shared or restricted environments. This step is optional: confirming data in Step 7 is the real success criterion.</p></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl --namespace otel-demo port-forward svc/frontend-proxy 8080:8080</code></pre></div>
+<p>Then browse <code>http://localhost:8080/</code>. If the connection fails, continue to Step 7.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Path</th><th>Service</th></tr></thead><tbody><tr><td><code>/</code></td><td>Webstore</td></tr><tr><td><code>/jaeger/ui/</code></td><td>Jaeger</td></tr><tr><td><code>/grafana/</code></td><td>Grafana</td></tr><tr><td><code>/loadgen/</code></td><td>Load Generator</td></tr><tr><td><code>/feature/</code></td><td>Feature Flags</td></tr></tbody></table></div>
+</section>
+<section id="o11y"><div class="step-meta"><span class="step-badge">Step 7</span><span class="step-time">~5 min</span></div><h2>Find your data in Observability Cloud</h2>
+<p>Open <a href="https://app.us1.signalfx.com/#/home" target="_blank" rel="noopener noreferrer">Observability Cloud (US1)</a> in another tab.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Filter</th><th>Example</th><th>Finds</th></tr></thead><tbody><tr><td><code>lab.id</code></td><td><code>northstar-01</code></td><td>All signals from your instance</td></tr><tr><td><code>lab.owner</code></td><td>your name</td><td>Data tagged with your name at install</td></tr><tr><td><code>deployment.environment</code></td><td><code>workshop-northstar-01</code></td><td>The APM environment for this lab</td></tr></tbody></table></div>
+<h3>A. Traces: Service Map</h3>
+<p>APM &rarr; Service Map. Set the environment filter to <code>workshop-&lt;INSTANCE&gt;</code>. You should see the demo services and their dependencies. Open a trace and follow a checkout through the services.</p>
+<h3>B. Metrics: Metric Finder</h3>
+<p>Search for a demo metric and filter by <code>lab.id</code>. Confirm it plots.</p>
+<h3>C. Tags: Tag Spotlight</h3>
+<p>In APM, open Tag Spotlight and confirm <code>lab.owner</code> and <code>deployment.environment</code> appear on your spans.</p>
+</section>
+<section id="wrapup"><h2>Wrap-up</h2>
+<p>Check each milestone from the overview. You deployed a realistic microservice application, tagged all of its telemetry through one Collector, and confirmed traces, metrics and tags in Splunk Observability Cloud, with no token in any application.</p>
+<p>Next, try the redaction idea from <a href="index.html#c3">Path A, Challenge 3</a> here: add an <code>attributes</code> processor to the traces pipeline in <code>splunk-values.yaml</code> and run <code>helm upgrade</code>.</p>
+</section>
+<section id="cleanup"><div class="step-meta"><span class="step-badge">Step 8</span></div><h2>Cleanup</h2>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm uninstall otel-demo -n otel-demo
+kubectl delete namespace otel-demo</code></pre></div>
+<h3>Change something later</h3>
+<p>If you edit <code>splunk-values.yaml</code> or need a new token, upgrade with the same overrides and restart the Collector:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade otel-demo open-telemetry/opentelemetry-demo \
+  -n otel-demo --create-namespace \
+  -f splunk-values.yaml \
+  --set-string &quot;opentelemetry-collector.config.exporters.otlphttp/signalfx.traces_endpoint=https://ingest.${REALM}.signalfx.com/v2/trace/otlp&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.otlphttp/signalfx.headers.X-SF-Token=${ACCESS_TOKEN}&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.signalfx.realm=${REALM}&quot; \
+  --set-string &quot;opentelemetry-collector.config.exporters.signalfx.access_token=${ACCESS_TOKEN}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[0].value=${INSTANCE}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[2].value=${INSTANCE}-cluster&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[3].value=workshop-${INSTANCE}&quot; \
+  --set-string &quot;opentelemetry-collector.config.processors.resource/lab.attributes[1].value=&lt;your name, no spaces&gt;&quot;</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo delete pods -l app.kubernetes.io/name=opentelemetry-collector</code></pre></div>
+<p>Rotate or delete the access token when you are done (Settings &rarr; Access Tokens).</p>
+</section>
+<section id="customer"><h2>Adapting for a customer cluster</h2>
+<ul>
+<li><strong>Token handling.</strong> Helm records the values it was installed with in a Secret in the release namespace, so a token passed with <code>--set-string</code> is readable by anyone who can read Secrets there. For anything beyond a lab, load the token from a Kubernetes Secret or your secrets manager and use short-lived tokens.</li>
+<li><strong>Their own services.</strong> The demo shows the Collector side. For the customer's real workloads, point their existing OTLP exporters at the in-cluster Collector service instead of at Splunk, which keeps the token in one place. See <a href="index.html#debrief">the debrief table</a> for the trade-offs.</li>
+<li><strong>Egress.</strong> Only the Collector pods need outbound HTTPS to <code>ingest.&lt;realm&gt;.signalfx.com</code> or <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>.</li>
+<li><strong>Sensitive data.</strong> Add a redaction processor to the Collector before export, and agree the attribute list with the security team first.</li>
+<li><strong>Environment names.</strong> Use a clear <code>deployment.environment</code> per cluster, with consistent casing.</li>
+</ul>
+</section>
+<section id="diagnostics"><h2>Diagnostics</h2>
+<h3>Test the ingest endpoint directly</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>curl -i -X POST &quot;https://ingest.${REALM}.signalfx.com/v2/trace/otlp&quot; \
+  -H &quot;X-SF-Token: ${ACCESS_TOKEN}&quot; -H &quot;Content-Type: application/x-protobuf&quot;</code></pre></div>
+<p>Any HTTP response proves the network path to the endpoint works. A 401 points to the token. This sends an empty request, so a non-success status other than 401 is not necessarily a problem.</p>
+<h3>Inspect the rendered Collector config</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo get cm otel-collector-agent -o yaml | less</code></pre></div>
+<h3>Confirm the Collector received the values</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo describe pod -l app.kubernetes.io/name=opentelemetry-collector | grep -E &quot;REALM:|ACCESS_TOKEN:&quot;</code></pre></div>
+<h3>Force a Collector restart</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n otel-demo delete pods -l app.kubernetes.io/name=opentelemetry-collector</code></pre></div>
+</section>
+<section id="errors"><h2>Common errors</h2>
+<div class="table-wrap"><table class=""><thead><tr><th>Error in Collector logs</th><th>Fix</th></tr></thead><tbody><tr><td><code>references exporter "X" which is not configured</code></td><td>A pipeline lists an exporter that is not defined under <code>exporters:</code>. Restate the chart defaults in your values file.</td></tr><tr><td><code>unknown type: "sapm"</code></td><td>The <code>sapm</code> exporter was removed from contrib. Use <code>otlphttp/signalfx</code> for traces.</td></tr><tr><td><code>404 ... /v1/metrics</code></td><td>Wrong path for OTLP metrics. Use the <code>signalfx</code> exporter, or the <code>/v2/datapoint/otlp</code> path from Path A.</td></tr><tr><td><code>404 ... /v1/log</code></td><td>Splunk Log Observer is not provisioned on this org. Drop the logs exporter to Splunk.</td></tr><tr><td><code>401 Unauthorized</code></td><td>The token must be an Ingest-scope token.</td></tr><tr><td>Pods stuck <code>Pending</code></td><td>The cluster is too small. Add nodes or free resources.</td></tr></tbody></table></div>
+</section>
+</main>
+</div>
+<footer class="site-footer">All services, tenants, SSNs and bank values in this lab are synthetic. Endpoint details were checked against Splunk's public documentation; verify against the current docs before production use.</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
