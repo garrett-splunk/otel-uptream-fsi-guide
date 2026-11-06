@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Optional: send a larger volume of synthetic traces to build out the service map (SDK-direct, no Docker).
 #
-# Usage:  ./simulate.sh [minutes] [workers] [profile]
+# Usage:  ./simulate.sh <minutes> <workers> <profile>   (all optional; try: ./simulate.sh 10 4 steady)
 #   minutes   how long to run                       (default 10)
 #   workers   parallel request loops                (default 4)
 #   profile   steady | busy | incident              (default steady)

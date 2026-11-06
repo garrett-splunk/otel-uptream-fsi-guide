@@ -15,7 +15,7 @@ cp .env.example .env        # then set SPLUNK_REALM and SPLUNK_ACCESS_TOKEN (ING
 ./run.sh direct             # SDK exports straight to ingest        (Docker)
 ./run.sh collector          # SDK -> Collector -> ingest            (Docker)
 ./run-local.sh 120          # direct mode without Docker, 120 seconds
-./simulate.sh 10 4 steady   # optional: send more traces (minutes, workers, steady|busy|incident)
+./simulate.sh 10 4 steady   # optional: send more traces (minutes workers profile; profile is steady, busy or incident)
 ./run.sh down direct        # stop
 ```
 
