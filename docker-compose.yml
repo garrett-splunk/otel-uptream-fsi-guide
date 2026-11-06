@@ -1,0 +1,55 @@
+# Seven synthetic payroll services + a traffic generator. Optional Collector under the "collector" profile.
+# Do not call this file directly: use ./run.sh direct  or  ./run.sh collector  (it sets the variables below).
+
+x-otel: &otel
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${TRACES_ENDPOINT}
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${METRICS_ENDPOINT}
+  OTEL_EXPORTER_OTLP_HEADERS: ${OTLP_HEADERS:-}
+  OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${DEPLOY_ENV},service.version=1.0.0
+  REDACT_IN_SDK: ${REDACT_IN_SDK:-false}
+
+x-service: &service
+  build: ./app
+  restart: unless-stopped
+
+services:
+  portal-web:
+    <<: *service
+    environment: { <<: *otel, ROLE: portal-web, OTEL_SERVICE_NAME: portal-web }
+  payroll-api:
+    <<: *service
+    environment: { <<: *otel, ROLE: payroll-api, OTEL_SERVICE_NAME: payroll-api }
+  tax-engine:
+    <<: *service
+    environment: { <<: *otel, ROLE: tax-engine, OTEL_SERVICE_NAME: tax-engine }
+  ach-gateway:
+    <<: *service
+    environment: { <<: *otel, ROLE: ach-gateway, OTEL_SERVICE_NAME: ach-gateway }
+  notification-svc:
+    <<: *service
+    environment: { <<: *otel, ROLE: notification-svc, OTEL_SERVICE_NAME: notification-svc }
+  benefits-api:
+    <<: *service
+    environment: { <<: *otel, ROLE: benefits-api, OTEL_SERVICE_NAME: benefits-api }
+  hr-api:
+    <<: *service
+    environment: { <<: *otel, ROLE: hr-api, OTEL_SERVICE_NAME: hr-api }
+
+  traffic:
+    build: ./app
+    command: ["python", "traffic.py"]
+    environment:
+      PORTAL_URL: http://portal-web:8080
+    depends_on: [portal-web, payroll-api, tax-engine, ach-gateway, notification-svc, benefits-api, hr-api]
+
+  # Only started with: ./run.sh collector
+  otel-collector:
+    profiles: ["collector"]
+    image: otel/opentelemetry-collector-contrib:0.116.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      SPLUNK_REALM: ${SPLUNK_REALM}
+      SPLUNK_ACCESS_TOKEN: ${SPLUNK_ACCESS_TOKEN}
+    volumes:
+      - ./collector/config.yaml:/etc/otelcol/config.yaml:ro

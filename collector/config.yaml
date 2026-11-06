@@ -1,0 +1,43 @@
+# Gateway Collector (upstream otel/opentelemetry-collector-contrib, pinned 0.116.0).
+# Apps send plain OTLP here; only this process holds the Splunk token.
+# Note: Splunk's own distribution renames the exporter to otlp_http; upstream 0.116.0 still calls it otlphttp.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  # Central redaction: one rule set for every service, no app changes.
+  attributes/redact:
+    actions:
+      - { key: employee.ssn, action: delete }
+      - { key: bank.account_number, action: delete }
+      - { key: bank.routing_number, action: delete }
+  batch: {}
+
+exporters:
+  otlphttp/splunk:
+    traces_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/trace/otlp
+    metrics_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/datapoint/otlp
+    headers:
+      X-SF-Token: ${env:SPLUNK_ACCESS_TOKEN}
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [otlphttp/splunk, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/splunk]
