@@ -70,7 +70,7 @@
 <li>About 20% of runs are multi-state, which makes <code>tax-engine</code> slow. About 6% of ACH submissions time out at the bank.</li>
 <li>Spans carry deliberately fake sensitive fields: <code>employee.ssn</code> (invalid 900- range), <code>bank.account_number</code> and <code>bank.routing_number</code> (zeros). You redact them in Challenge 3.</li>
 </ul>
-<div class="callout callout--info"><span class="callout__title">Lab status</span><p>The SDK-direct path was run against a real us1 org and the data was confirmed in APM (all seven services and six inferred nodes). The Collector path is written to the same spec but has not yet been run end to end; treat Challenge 2 as its first live test. Path B follows the Kubernetes demo guide step for step.</p></div>
+<div class="callout callout--info"><span class="callout__title">Lab status</span><p>Path A, SDK direct: run against a real us1 org, with all seven services and six inferred nodes confirmed in APM. Path A, Collector mode: written to the same spec but not yet run end to end, so treat Challenge 2 as its first live test. Path B: run on a local minikube cluster against the same org, with the services, metrics and tags confirmed under the <code>k8s-workshop-northstar-01</code> environment. On an 8 GB cluster it needs lite mode.</p></div>
 </section>
 <section id="prereqs"><div class="step-meta"><span class="step-time">~5 min</span></div><h2>Before you start</h2>
 <h3>You need</h3>

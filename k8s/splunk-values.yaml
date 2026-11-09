@@ -1,0 +1,44 @@
+# Adds a Splunk exporter and a tagging processor to the OpenTelemetry Demo's Collector.
+# Written for demo chart opentelemetry-demo 0.42.x (demo 3.1.0), which uses snake_case component names
+# (otlp_http, resource_detection, span_metrics). Older chart versions use otlphttp, resourcedetection, spanmetrics.
+# Empty strings are intentional: install.sh injects realm, token and tags with --set-string.
+opentelemetry-collector:
+  config:
+    exporters:
+      otlp_http/signalfx:
+        traces_endpoint: ""
+        headers:
+          X-SF-Token: ""
+          Content-Type: "application/x-protobuf"
+        sending_queue:
+          batch: {}
+      signalfx:
+        realm: ""
+        access_token: ""
+    processors:
+      resource/lab:
+        attributes:
+          - key: lab.id
+            value: ""        # Index [0]
+            action: upsert
+          - key: lab.owner
+            value: ""        # Index [1]
+            action: upsert
+          - key: k8s.cluster.name
+            value: ""        # Index [2]
+            action: upsert
+          - key: deployment.environment
+            value: ""        # Index [3]
+            action: upsert
+    service:
+      pipelines:
+        traces:
+          processors: [memory_limiter, resource_detection, resource, resource/lab, transform/sanitize_spans, gen_ai_normalizer, transform/redact_sensitive_data, redaction]
+          exporters: [otlp_grpc/jaeger, debug, span_metrics, otlp_http/signalfx]
+        metrics:
+          receivers: [otlp, kafkametrics, span_metrics, prometheus/ad]
+          processors: [memory_limiter, resource_detection, resource, resource/lab]
+          exporters: [otlp_http/prometheus, debug, signalfx]
+        logs:
+          processors: [memory_limiter, resource_detection, resource, resource/lab, transform/sanitize_logs]
+          exporters: [opensearch, debug]

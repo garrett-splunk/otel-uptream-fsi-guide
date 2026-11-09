@@ -1,0 +1,32 @@
+# Lightweight mode for small clusters (about 8 GB RAM): drops the optional UIs, storage backends and the AI
+# chatbot components, and exports only to Splunk (plus the debug exporter).
+# Keep astronomy-db enabled: product-catalog waits for it at startup.
+components:
+  agent:
+    enabled: false
+  chatbot:
+    enabled: false
+  mcp:
+    enabled: false
+grafana:
+  enabled: false
+jaeger:
+  enabled: false
+prometheus:
+  enabled: false
+opensearch:
+  enabled: false
+opentelemetry-collector:
+  config:
+    service:
+      pipelines:
+        traces:
+          processors: [memory_limiter, resource_detection, resource, resource/lab, transform/sanitize_spans, gen_ai_normalizer, transform/redact_sensitive_data, redaction]
+          exporters: [debug, span_metrics, otlp_http/signalfx]
+        metrics:
+          receivers: [otlp, kafkametrics, span_metrics, prometheus/ad]
+          processors: [memory_limiter, resource_detection, resource, resource/lab]
+          exporters: [debug, signalfx]
+        logs:
+          processors: [memory_limiter, resource_detection, resource, resource/lab, transform/sanitize_logs]
+          exporters: [debug]
