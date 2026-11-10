@@ -20,7 +20,7 @@
 </div></header>
 <div class="progress" aria-hidden="true"><div class="progress__bar" id="progressBar"></div></div>
 <div class="page">
-<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#preflight"><span class="num">1</span>Pre-flight</a></li></ul><p class="sidebar__group">Deploy</p><ul><li><a href="#clone"><span class="num">2</span>Clone demo repo</a></li><li><a href="#values"><span class="num">3</span>splunk-values.yaml</a></li><li><a href="#install"><span class="num">4</span>Install</a></li><li><a href="#verify"><span class="num">5</span>Watch and verify</a></li></ul><p class="sidebar__group">Confirm in Splunk</p><ul><li><a href="#access"><span class="num">6</span>Access (optional)</a></li><li><a href="#o11y"><span class="num">7</span>Find data in O11y</a></li><li><a href="#wrapup"><span class="num num--dash">-</span>Wrap-up</a></li></ul><p class="sidebar__group">Reference</p><ul><li><a href="#cleanup"><span class="num">8</span>Cleanup</a></li><li><a href="#customer"><span class="num num--dash">-</span>Adapting for a customer</a></li><li><a href="#diagnostics"><span class="num num--dash">-</span>Diagnostics</a></li><li><a href="#errors"><span class="num num--dash">-</span>Common errors</a></li></ul><p class="sidebar__group">Path A</p><ul><li><a href="index.html"><span class="num num--dash">-</span>&larr; Docker or local</a></li></ul></aside>
+<aside class="sidebar" aria-label="Guide contents"><p class="sidebar__sub">Challenge lab</p><p class="sidebar__group">Start here</p><ul><li><a href="#overview"><span class="num num--dash">-</span>Overview</a></li><li><a href="#preflight"><span class="num">1</span>Pre-flight</a></li></ul><p class="sidebar__group">Deploy</p><ul><li><a href="#clone"><span class="num">2</span>Clone demo repo</a></li><li><a href="#values"><span class="num">3</span>splunk-values.yaml</a></li><li><a href="#install"><span class="num">4</span>Install</a></li><li><a href="#verify"><span class="num">5</span>Watch and verify</a></li></ul><p class="sidebar__group">Confirm in Splunk</p><ul><li><a href="#access"><span class="num">6</span>Access (optional)</a></li><li><a href="#o11y"><span class="num">7</span>Find data in O11y</a></li><li><a href="#wrapup"><span class="num num--dash">-</span>Wrap-up</a></li></ul><p class="sidebar__group">Existing cluster</p><ul><li><a href="#existing"><span class="num">A</span>Inventory</a></li><li><a href="#ex-token"><span class="num">B</span>Token Secret</a></li><li><a href="#ex-config"><span class="num">C</span>Add Splunk exporter</a></li><li><a href="#ex-apply"><span class="num">D</span>Apply with Helm</a></li><li><a href="#ex-verify"><span class="num">E</span>Verify</a></li><li><a href="#ex-apps"><span class="num">F</span>Apps sending direct</a></li><li><a href="#ex-cutover"><span class="num">G</span>Cut over or roll back</a></li><li><a href="#ex-trouble"><span class="num num--dash">-</span>Troubleshooting</a></li></ul><p class="sidebar__group">Splunk Enterprise logs</p><ul><li><a href="#loc"><span class="num">H</span>Overview, us1</a></li><li><a href="#loc-role"><span class="num">I</span>Service account</a></li><li><a href="#loc-wlm"><span class="num">J</span>Workload rule</a></li><li><a href="#loc-cert"><span class="num">K</span>Certificate</a></li><li><a href="#loc-connect"><span class="num">L</span>Add connection</a></li><li><a href="#loc-verify"><span class="num">M</span>Verify</a></li><li><a href="#loc-trouble"><span class="num num--dash">-</span>Troubleshooting</a></li></ul><p class="sidebar__group">Reference</p><ul><li><a href="#cleanup"><span class="num">8</span>Cleanup</a></li><li><a href="#customer"><span class="num num--dash">-</span>Adapting for a customer</a></li><li><a href="#diagnostics"><span class="num num--dash">-</span>Diagnostics</a></li><li><a href="#errors"><span class="num num--dash">-</span>Common errors</a></li></ul><p class="sidebar__group">Path A</p><ul><li><a href="index.html"><span class="num num--dash">-</span>&larr; Docker or local</a></li></ul></aside>
 <main id="content">
 <section id="overview">
 <p class="eyebrow">Path B &middot; Kubernetes &middot; us1</p>
@@ -39,6 +39,8 @@
 <rect x="490" y="96" width="140" height="44" rx="8" class="node-accent"/><text x="560" y="115" class="lbl">Metrics</text><text x="560" y="130" class="sub">signalfx exporter</text>
 <path d="M220 85 L268 85" class="arrow"/><path d="M440 72 L488 55" class="arrow"/><path d="M440 98 L488 116" class="arrow"/></svg><figcaption>Demo microservices send OTLP to the in-cluster Collector. The Collector's <code>resource/lab</code> processor stamps every signal, then traces go out through <code>otlp_http/signalfx</code> and metrics through the <code>signalfx</code> exporter.</figcaption></figure>
 <div class="callout callout--info"><span class="callout__title">How this relates to Path A</span><p>This is the <a href="index.html#c2">Collector design</a> from Path A, running as a Kubernetes agent: the apps carry no token, and only the Collector holds it. To compare it with SDK-direct export, use Path A.</p></div>
+<div class="callout callout--tip"><span class="callout__title">Already running OpenTelemetry in a cluster?</span><p>You do not need the demo. Skip to <a href="#existing">Steps A to G</a> to add Splunk Observability Cloud as a second destination on the Collector you already have, without changing your existing pipelines.</p></div>
+<div class="callout callout--tip"><span class="callout__title">Want to search logs that are already in Splunk Enterprise?</span><p>See <a href="#loc">Steps H to M</a> to connect Splunk Enterprise to Observability Cloud in realm us1 with Log Observer Connect.</p></div>
 <div class="callout"><span class="callout__title">Based on the OpenTelemetry Kubernetes Demo guide</span><p>The steps and commands follow <a href="https://garrett-splunk.github.io/OpenTelemetry-Kubernetes-Demo/">the OpenTelemetry Kubernetes Demo workshop guide</a>, adapted so you can run it on your own cluster. That guide assumes a prepared workshop host where <code>REALM</code>, <code>ACCESS_TOKEN</code> and <code>INSTANCE</code> are already set. Here you set them yourself in Step 1.</p></div>
 <h3>Milestones</h3>
 <div class="table-wrap"><table class=""><thead><tr><th>Milestone</th><th>Evidence</th></tr></thead><tbody><tr><td>Demo running in Kubernetes</td><td>All pods Running in Step 5</td></tr><tr><td>Collector exporting cleanly</td><td>No 401 or 404 errors in Collector logs</td></tr><tr><td>Traces in APM</td><td>Your services on the Service Map (Step 7)</td></tr><tr><td>Metrics ingested</td><td><code>lab.id</code> metrics plotting in Metric Finder</td></tr><tr><td>Tags applied correctly</td><td><code>lab.owner</code> and <code>deployment.environment</code> in Tag Spotlight</td></tr></tbody></table></div>
@@ -117,7 +119,7 @@ helm repo update</code></pre></div>
 <p>The attribute index in the install command refers to the position of each attribute above:</p>
 <div class="table-wrap"><table class=""><thead><tr><th>Index</th><th>Key</th><th>Set at install to</th></tr></thead><tbody><tr><td>[0]</td><td><code>lab.id</code></td><td><code>${INSTANCE}</code></td></tr><tr><td>[1]</td><td><code>lab.owner</code></td><td>your name, no spaces</td></tr><tr><td>[2]</td><td><code>k8s.cluster.name</code></td><td><code>${INSTANCE}-cluster</code></td></tr><tr><td>[3]</td><td><code>deployment.environment</code></td><td><code>k8s-workshop-${INSTANCE}</code></td></tr></tbody></table></div>
 <p>Why these endpoints: traces use the same OTLP/HTTP ingest path as Path A (<code>/v2/trace/otlp</code>, with the <code>X-SF-Token</code> header). This guide's tested config sends metrics through Splunk's <code>signalfx</code> exporter, which needs only the realm and token. Sending metrics as OTLP to <code>/v2/datapoint/otlp</code> (Path A) is also supported.</p>
-<div class="callout"><span class="callout__title">Logs stay in the demo</span><p>The logs pipeline goes to the demo's own OpenSearch and the <code>debug</code> exporter, not to Splunk. Splunk Log Observer is not part of this setup.</p></div>
+<div class="callout"><span class="callout__title">Logs stay in the demo</span><p>The logs pipeline goes to the demo's own OpenSearch and the <code>debug</code> exporter, not to Splunk. Splunk Log Observer is not part of this setup. To search logs that already live in Splunk Enterprise, see <a href="#loc">Log Observer Connect (Steps H to M)</a>.</p></div>
 </section>
 <section id="install"><div class="step-meta"><span class="step-badge">Step 4</span><span class="step-time">~10 min</span></div><h2>Install</h2>
 <div class="callout callout--tip"><span class="callout__title">Shortcut: the lab repo script</span><p><code>k8s/install.sh</code> runs this same <code>helm upgrade --install</code> for you. It reads <code>SPLUNK_REALM</code> and <code>SPLUNK_ACCESS_TOKEN</code> from the repo's <code>.env</code>, picks lite mode automatically on small clusters, and sets the environment to <code>k8s-workshop-&lt;INSTANCE&gt;</code>. Run <code>LAB_OWNER=yourname ./k8s/install.sh</code>.</p></div>
@@ -168,6 +170,328 @@ otel-collector-agent-28667         1/1     Running   0          111s
 <section id="wrapup"><h2>Wrap-up</h2>
 <p>Check each milestone from the overview. You deployed a realistic microservice application, tagged all of its telemetry through one Collector, and confirmed traces, metrics and tags in Splunk Observability Cloud, with no token in any application.</p>
 <p>Next, try the redaction idea from <a href="index.html#c3">Path A, Challenge 3</a> here: add an <code>attributes</code> processor to the traces pipeline in <code>splunk-values.yaml</code> and run <code>helm upgrade</code>.</p>
+</section>
+<section id="existing"><div class="step-meta"><span class="step-badge">Step A</span><span class="step-time">~10 min</span></div><h2>Point an existing OpenTelemetry cluster at Splunk</h2>
+<p>Path B above installs the demo with its own Collector. If your cluster already runs OpenTelemetry and ships to another backend (Jaeger, Tempo, Prometheus, another vendor), you do not reinstall anything. You add Splunk Observability Cloud as one more destination on the Collector that is already there. Steps A to G do this without editing your existing pipelines, so the current backend keeps receiving data while you compare.</p>
+<figure class="diagram"><svg viewBox="0 0 640 170" role="img" aria-label="An existing Collector keeps sending to the current backend and gains a second pipeline that sends to Splunk Observability Cloud">
+<rect x="10" y="45" width="150" height="80" rx="10" class="node"/><text x="85" y="76" class="lbl">your workloads</text><text x="85" y="94" class="sub">already emit OTLP</text>
+<rect x="215" y="35" width="190" height="100" rx="10" class="node-warm"/><text x="310" y="60" class="lbl">your existing Collector</text><text x="310" y="80" class="sub">existing pipelines: unchanged</text><text x="310" y="98" class="sub">+ traces/splunk, metrics/splunk</text><text x="310" y="116" class="sub">token from a Secret</text>
+<rect x="470" y="18" width="160" height="44" rx="8" class="node"/><text x="550" y="37" class="lbl">current backend</text><text x="550" y="52" class="sub">keeps receiving data</text>
+<rect x="470" y="108" width="160" height="44" rx="8" class="node-accent"/><text x="550" y="127" class="lbl">Splunk Observability</text><text x="550" y="142" class="sub">otlphttp/splunk</text>
+<path d="M160 85 L213 85" class="arrow"/><path d="M405 70 L468 45" class="arrow"/><path d="M405 100 L468 125" class="arrow"/></svg><figcaption>You add a second destination next to the first. Nothing about the existing pipelines changes until you decide to cut over in Step G.</figcaption></figure>
+<div class="callout callout--warning"><span class="callout__title">What was and was not tested</span><p>The upstream <code>opentelemetry-collector</code> Helm chart was rendered with <code>helm template</code> at versions 0.110.0 and 0.178.2: the new pipelines appear next to the existing ones, and the token environment variables render from a Secret. The ingest endpoints were verified live in Path A (SDK direct to us1), and the demo's own Collector sent live traces and metrics in Steps 1 to 7. The exact <code>otlphttp/splunk</code> block below has not been run on a live Collector, and the Operator and plain-manifest variants are untested. Step D includes a dry run so you can check before anything changes.</p></div>
+<h3>Before you start</h3>
+<ul><li>Complete <a href="#preflight">Step 1</a> so <code>REALM</code> and <code>ACCESS_TOKEN</code> (an <strong>Ingest</strong>-scope token) are set in this terminal.</li>
+<li>You can run <code>kubectl</code> and <code>helm</code> against the cluster, with permission to upgrade the Collector release and create a Secret in its namespace.</li></ul>
+<h3>Find what you already have</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>export NS=observability          # namespace where your Collector runs
+export RELEASE=otel-collector    # Helm release name of that Collector
+helm list -A | grep -i -E &#x27;otel|collector&#x27;
+kubectl -n $NS get deploy,ds,sts -o wide
+helm get values $RELEASE -n $NS -o yaml &gt; current-values.yaml   # backup; may hold tokens, do not commit</code></pre></div>
+<p>Write down these five things. Every later step depends on them.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>What</th><th>Where to read it</th><th>Why it matters</th></tr></thead><tbody><tr><td>Namespace and release</td><td><code>helm list -A</code></td><td>Used as <code>$NS</code> and <code>$RELEASE</code> in every command.</td></tr>
+<tr><td>Chart name and version</td><td>The <code>CHART</code> column of <code>helm list</code></td><td>Step D pins the same chart version, so the upgrade changes only what you add.</td></tr>
+<tr><td>Collector image and version</td><td>The <code>IMAGES</code> column of <code>kubectl get deploy,ds,sts -o wide</code></td><td>The exporter is named <code>otlphttp</code> on older Collectors and <code>otlp_http</code> on newer ones. See the callout in Step C.</td></tr>
+<tr><td>Receiver name</td><td><code>current-values.yaml</code>, or the <code>relay</code> key of the Collector ConfigMap</td><td>The new pipelines must read from the same receiver. This guide assumes <code>otlp</code>.</td></tr>
+<tr><td>Existing <code>extraEnvs</code></td><td><code>current-values.yaml</code></td><td>If it is already set, Step C needs one extra edit. Helm replaces lists instead of merging them.</td></tr>
+</tbody></table></div>
+<p>Then decide where your applications send telemetry today:</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Applications send to</th><th>What to do</th></tr></thead><tbody><tr><td>The existing Collector (the common case)</td><td>Follow steps B to E, then G.</td></tr>
+<tr><td>The old backend directly, with no Collector</td><td>Do steps B to E to stand up the Splunk path, then Step F to repoint the applications.</td></tr>
+</tbody></table></div>
+<div class="callout"><span class="callout__title">Not using Helm?</span><p>With the OpenTelemetry Operator, put the same <code>exporters</code>, <code>processors</code> and <code>service.pipelines</code> blocks from Step C under <code>spec.config</code> of the <code>OpenTelemetryCollector</code> resource, and the two environment variables under <code>spec.env</code>. With plain manifests, edit the Collector ConfigMap, add the two variables to the container <code>env</code>, then run <code>kubectl -n $NS rollout restart</code> on the workload. If the release comes from the Splunk Distribution chart (<code>splunk-otel-collector</code>), it already exports to Splunk through its own <code>splunkObservability</code> values; use that chart's documentation instead of Step C.</p></div>
+</section>
+<section id="ex-token"><div class="step-meta"><span class="step-badge">Step B</span><span class="step-time">~2 min</span></div><h2>Store the token as a Secret</h2>
+<p>Store the token in a Kubernetes Secret in the Collector's namespace. The Collector reads it as an environment variable, so the token never appears in your Helm values.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS create secret generic splunk-o11y-token --from-literal=token=&quot;$ACCESS_TOKEN&quot;
+kubectl -n $NS get secret splunk-o11y-token</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>NAME                TYPE     DATA   AGE
+splunk-o11y-token   Opaque   1      3s</code></pre></div>
+<div class="callout callout--info"><span class="callout__title">Why a Secret</span><p>Helm records the values a release was installed with in a Secret, so a token passed with <code>--set-string</code> is readable by anyone who can read Secrets in that namespace. A <code>secretKeyRef</code> keeps the token in one object that you can lock down and rotate. See <a href="#customer">Adapting for a customer cluster</a>.</p></div>
+</section>
+<section id="ex-config"><div class="step-meta"><span class="step-badge">Step C</span><span class="step-time">~5 min</span></div><h2>Add Splunk as a second destination</h2>
+<p>Create a values file that only <em>adds</em> to your release. The two new pipelines, <code>traces/splunk</code> and <code>metrics/splunk</code>, read from your existing receiver and write to Splunk. Your existing <code>traces</code> and <code>metrics</code> pipelines are not in this file, so they stay as they are.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>cat &gt; add-splunk.yaml &lt;&lt;&#x27;EOF&#x27;
+extraEnvs:
+  - name: SPLUNK_REALM
+    value: us1                      # your realm
+  - name: SPLUNK_ACCESS_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: splunk-o11y-token
+        key: token
+
+config:
+  processors:
+    batch: {}
+    resource/splunk:
+      attributes:
+        - key: deployment.environment
+          value: eks-prod-east      # name this cluster or environment
+          action: insert            # only sets it when the app did not
+  exporters:
+    otlphttp/splunk:
+      traces_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/trace/otlp
+      metrics_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/datapoint/otlp
+      headers:
+        X-SF-Token: ${env:SPLUNK_ACCESS_TOKEN}
+  service:
+    pipelines:
+      traces/splunk:
+        receivers: [otlp]
+        processors: [resource/splunk, batch]
+        exporters: [otlphttp/splunk]
+      metrics/splunk:
+        receivers: [otlp]
+        processors: [resource/splunk, batch]
+        exporters: [otlphttp/splunk]
+EOF</code></pre></div>
+<p>The quoted <code>'EOF'</code> matters: it stops the shell from expanding <code>${env:...}</code>, which the Collector resolves at startup. Edit the realm and the environment name before you save.</p>
+<h3>What each part does</h3>
+<div class="table-wrap"><table class=""><thead><tr><th>Block</th><th>Purpose</th></tr></thead><tbody><tr><td><code>extraEnvs</code></td><td>Gives the Collector <code>SPLUNK_REALM</code> and the token from the Secret in Step B.</td></tr>
+<tr><td><code>otlphttp/splunk</code></td><td>Sends traces to <code>/v2/trace/otlp</code> and metrics to <code>/v2/datapoint/otlp</code> on <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>, with the token in the <code>X-SF-Token</code> header. The older <code>signalfx.com</code> hostname still works.</td></tr>
+<tr><td><code>resource/splunk</code></td><td>Adds <code>deployment.environment</code> so the services show under an environment in APM. <code>insert</code> never overwrites a value the application already set.</td></tr>
+<tr><td><code>traces/splunk, metrics/splunk</code></td><td>New pipelines. Because they are new keys, Helm adds them without touching your existing pipelines.</td></tr>
+</tbody></table></div>
+<div class="callout callout--warning"><span class="callout__title">If extraEnvs is already set</span><p>Helm replaces a list instead of merging it, so the <code>extraEnvs</code> above would drop your existing entries. Open <code>current-values.yaml</code>, copy your existing entries into <code>add-splunk.yaml</code> under <code>extraEnvs</code>, and keep the two <code>SPLUNK_*</code> entries.</p></div>
+<div class="callout callout--info"><span class="callout__title">Exporter name depends on the Collector version</span><p>Older Collectors, including the 0.116.0 build used in Path A, call the exporter <code>otlphttp</code>. Newer releases call it <code>otlp_http</code>. With the Helm chart you can keep writing <code>otlphttp/splunk</code>: both chart versions I rendered accepted it, and 0.178.2 rewrote it to <code>otlp_http/splunk</code> in the final config. With the Operator or a plain ConfigMap there is no rewrite, so use the name your Collector version expects. A wrong name fails at startup with <code>unknown type</code>.</p></div>
+<div class="callout"><span class="callout__title">Other things to adjust</span><p>If your receiver is not named <code>otlp</code>, change it in both pipelines. If your metrics come from a scrape receiver such as <code>prometheus</code>, add it to the <code>receivers</code> list of <code>metrics/splunk</code>. Only signals that arrive at the Collector can be forwarded. If your existing pipelines use <code>memory_limiter</code>, add it first in the <code>processors</code> list of both new pipelines.</p></div>
+</section>
+<section id="ex-apply"><div class="step-meta"><span class="step-badge">Step D</span><span class="step-time">~5 min</span></div><h2>Apply with Helm</h2>
+<p>Find your chart version in the <code>CHART</code> column of <code>helm list -n $NS</code> (for example <code>opentelemetry-collector-0.178.2</code> means <code>0.178.2</code>). Pinning it keeps the upgrade to your additions only.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>export CHART_VERSION=0.178.2     # your installed chart version
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo update</code></pre></div>
+<p>First, a dry run. It renders the result without changing the cluster, and the filter shows only the lines you care about:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS \
+  --version $CHART_VERSION --reuse-values -f add-splunk.yaml --dry-run \
+  | grep -E &quot;traces/splunk|metrics/splunk|SPLUNK_|splunk-o11y-token&quot;</code></pre></div>
+<p>You should see both new pipelines and the Secret reference. If the command errors, fix it now, before the real upgrade. Then apply:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS \
+  --version $CHART_VERSION --reuse-values -f add-splunk.yaml</code></pre></div>
+<p>The chart adds a checksum of the config to the pod template, so the Collector pods restart on their own. Watch them, then check the logs for export problems:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS get pods -w          # wait for the new pods to be Running
+kubectl -n $NS logs -l app.kubernetes.io/instance=$RELEASE --tail=50 \
+  | grep -iE &quot;error|401|404|unknown type|not configured&quot;</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code># (no matching lines: silence is good)</code></pre></div>
+<div class="callout"><span class="callout__title">Release from a different chart?</span><p>Replace <code>open-telemetry/opentelemetry-collector</code> with the chart your release uses (<code>helm list</code> shows it), and keep <code>--version</code> and <code>--reuse-values</code>. Check that its values use the same <code>config:</code>, <code>extraEnvs:</code> structure; some vendor charts name these differently.</p></div>
+</section>
+<section id="ex-verify"><div class="step-meta"><span class="step-badge">Step E</span><span class="step-time">~5 min</span></div><h2>Confirm in Splunk Observability Cloud</h2>
+<p>Give it a minute or two, then open <a href="https://app.us1.signalfx.com/#/home" target="_blank" rel="noopener noreferrer">Observability Cloud (US1)</a>.</p>
+<ol><li><strong>Traces.</strong> APM &rarr; Service Map. Set the environment filter to the value you used for <code>deployment.environment</code> (<code>eks-prod-east</code> in the example). Your services and their dependencies should appear. If the applications already set their own <code>deployment.environment</code>, use that value, because <code>insert</code> does not overwrite it.</li>
+<li><strong>Metrics.</strong> Open Metric Finder and search for a metric your applications emit over OTLP. Confirm it plots.</li>
+<li><strong>Existing backend.</strong> Open it as usual. Because the existing pipelines were not edited, the data should still be arriving there.</li></ol>
+<p>Nothing in the Service Map after a few minutes? Test the endpoint from the Collector's side with the <a href="#diagnostics">diagnostics</a> and compare the logs from Step D against <a href="#ex-trouble">the table at the end of this section</a>.</p>
+<div class="callout callout--tip"><span class="callout__title">Check</span><p>The milestone for this section: your existing workloads appear in APM, and the old backend still receives data.</p></div>
+</section>
+<section id="ex-apps"><div class="step-meta"><span class="step-badge">Step F</span><span class="step-time">~10 min</span></div><h2>Applications that send straight to the old backend</h2>
+<p>Skip this step if your applications already send to the Collector. If they send straight to the old backend, you have two options.</p>
+<h3>Option 1 (recommended): send through the Collector</h3>
+<p>Point the applications' OTLP exporter at the Collector. Find the Collector Service first:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS get svc | grep -i collector</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>export APP_NS=shop              # namespace of the application
+export APP=checkout            # Deployment name
+export COLLECTOR_SVC=otel-collector   # Service name from the command above
+kubectl -n $APP_NS set env deploy/$APP \
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://$COLLECTOR_SVC.$NS.svc.cluster.local:4318 \
+  OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf</code></pre></div>
+<div class="callout callout--warning"><span class="callout__title">Keep the old backend fed</span><p>Once an application sends to the Collector, the Collector decides where its data goes. Add your old backend as an exporter on the Collector too, in your existing pipelines, or the old backend stops receiving that application's data. If the old backend was the application's direct target, copy that endpoint into an exporter and add it to the original <code>traces</code> and <code>metrics</code> pipelines.</p></div>
+<h3>Option 2: send straight to Splunk</h3>
+<p>Use the signal-specific variables with full URLs, so the SDK does not append <code>/v1/traces</code>. This puts the token in every application that uses it, so prefer Option 1 for anything beyond a test. The mechanics and trade-offs are in <a href="index.html#c1">Path A, Challenge 1</a>.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $APP_NS create secret generic splunk-o11y-otlp-headers \
+  --from-literal=OTEL_EXPORTER_OTLP_HEADERS=&quot;X-SF-Token=$ACCESS_TOKEN&quot;
+kubectl -n $APP_NS set env deploy/$APP --from=secret/splunk-o11y-otlp-headers
+kubectl -n $APP_NS set env deploy/$APP \
+  OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://ingest.$REALM.observability.splunkcloud.com/v2/trace/otlp \
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=https://ingest.$REALM.observability.splunkcloud.com/v2/datapoint/otlp \
+  OTEL_RESOURCE_ATTRIBUTES=deployment.environment=eks-prod-east</code></pre></div>
+<p>The Secret's key is the variable name, so <code>set env --from=secret/...</code> injects <code>OTEL_EXPORTER_OTLP_HEADERS</code> without the token appearing in the Deployment spec. Each <code>set env</code> triggers a rollout of that Deployment. These two commands have not been run against a live cluster.</p>
+</section>
+<section id="ex-cutover"><div class="step-meta"><span class="step-badge">Step G</span><span class="step-time">~5 min</span></div><h2>Cut over, or roll back</h2>
+<p>Run both destinations side by side for as long as you want to compare. When the customer is satisfied, you can stop sending to the old backend, or keep both. To stop, edit the file that holds the complete values for the release (a stable copy is the <code>current-values.yaml</code> you saved in Step A, with your additions merged in). Do not use <code>--reuse-values</code> here, because the file is now the full set.</p>
+<ol><li>Export the current values: <code>helm get values $RELEASE -n $NS -o yaml &gt; cutover-values.yaml</code>.</li>
+<li>In <code>cutover-values.yaml</code>, under <code>config.service.pipelines.traces</code> and <code>metrics</code>, replace the old exporter with <code>otlphttp/splunk</code> and add <code>resource/splunk</code> to each <code>processors</code> list.</li>
+<li>Delete the <code>traces/splunk</code> and <code>metrics/splunk</code> blocks and the old exporter definition.</li></ol>
+<p>The pipelines then look like this (your processor and receiver names may differ):</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>yaml</span><button class="btn-copy" type="button">Copy</button></div><pre><code>config:
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/splunk, batch]
+        exporters: [otlphttp/splunk]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/splunk, batch]
+        exporters: [otlphttp/splunk]</code></pre></div>
+<p>Check the render, then apply. A values file with the full config renders cleanly on chart 0.178.2:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS --version $CHART_VERSION -f cutover-values.yaml --dry-run | grep -A12 -E &quot;^        (traces|metrics):&quot;
+helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS --version $CHART_VERSION -f cutover-values.yaml</code></pre></div>
+<h3>Roll back</h3>
+<p>Any time something looks wrong, return to the previous revision:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm history $RELEASE -n $NS
+helm rollback $RELEASE &lt;REVISION&gt; -n $NS          # pick the revision before your change</code></pre></div>
+<p>To remove the token completely, run <code>kubectl -n $NS delete secret splunk-o11y-token</code>, then rotate or delete the token in Splunk (Settings &rarr; Access Tokens).</p>
+</section>
+<section id="ex-trouble"><h2>Troubleshooting this section</h2><div class="table-wrap"><table class=""><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody><tr><td><code>401 Unauthorized</code></td><td>The token is not an Ingest-scope token, or the Secret holds a different value. Recreate the Secret and restart the pods.</td></tr>
+<tr><td><code>unknown type: &quot;otlphttp&quot;</code> or <code>unknown type: &quot;otlp_http&quot;</code></td><td>The exporter name does not match the Collector version. Use the other spelling, or the Helm chart, which rewrites it.</td></tr>
+<tr><td><code>references exporter &quot;otlphttp/splunk&quot; which is not configured</code></td><td>The exporter block is missing or misspelled under <code>config.exporters</code>. Re-check <code>add-splunk.yaml</code>.</td></tr>
+<tr><td><code>404 ... /v1/metrics</code> or <code>/v1/traces</code></td><td>The exporter was given <code>endpoint</code> instead of <code>traces_endpoint</code> and <code>metrics_endpoint</code>. Use the full URLs from Step C.</td></tr>
+<tr><td>Existing backend stopped receiving data</td><td>A pipeline's <code>exporters</code> list was replaced without the old exporter. Restore the old exporter in that list, or <code>helm rollback</code>.</td></tr>
+<tr><td><code>SPLUNK_ACCESS_TOKEN</code> is empty, or your other variables disappeared</td><td><code>extraEnvs</code> was replaced, not merged. Copy your existing entries into <code>add-splunk.yaml</code> (Step C) and upgrade again.</td></tr>
+<tr><td>No errors, but nothing in APM</td><td>The applications are not sending to this Collector, or the receiver name in the new pipelines is wrong. Check the Collector logs for received spans, and confirm the Step F variable.</td></tr>
+<tr><td>Services appear without an environment</td><td>Set <code>deployment.environment</code> in the <code>resource/splunk</code> processor, or in the application's <code>OTEL_RESOURCE_ATTRIBUTES</code>.</td></tr>
+<tr><td>Pods crash-loop after the upgrade</td><td>Read the first error in <code>kubectl -n $NS logs &lt;pod&gt;</code>, fix the config, or <code>helm rollback $RELEASE &lt;REVISION&gt; -n $NS</code>.</td></tr>
+</tbody></table></div><div class="callout"><span class="callout__title">Cost and limits</span><p>Sending to a second backend doubles the Collector's outbound traffic and its CPU for the Splunk pipelines. Check the org's entitlements before pointing production traffic at a trial or Free Edition org.</p></div>
+</section>
+<section id="loc"><div class="step-meta"><span class="step-badge">Step H</span><span class="step-time">~10 min</span></div><h2>Add Splunk Enterprise logs with Log Observer Connect (us1)</h2>
+<p>Log Observer Connect lets Splunk Observability Cloud search logs that already live in Splunk Enterprise, next to your metrics and traces. Observability Cloud uses the Splunk Enterprise search head to authenticate a service account and to run the searches. Your logs stay in Splunk Enterprise; Log Observer Connect does not store or index them, and the documentation lists no additional charge for it.</p>
+<figure class="diagram"><svg viewBox="0 0 640 150" role="img" aria-label="Splunk Observability Cloud in realm us1 reaches the Splunk Enterprise search head on port 8089 and searches the indexes you allow; the logs stay in Splunk Enterprise">
+<rect x="10" y="35" width="170" height="80" rx="10" class="node-accent"/><text x="95" y="68" class="lbl">Observability Cloud</text><text x="95" y="86" class="sub">realm us1</text><text x="95" y="102" class="sub">runs searches</text>
+<rect x="235" y="35" width="170" height="80" rx="10" class="node-warm"/><text x="320" y="68" class="lbl">Splunk Enterprise</text><text x="320" y="86" class="sub">search head or</text><text x="320" y="102" class="sub">SHC load balancer</text>
+<rect x="460" y="35" width="170" height="80" rx="10" class="node"/><text x="545" y="68" class="lbl">Your indexes</text><text x="545" y="86" class="sub">only those you allow</text><text x="545" y="102" class="sub">logs are not copied</text>
+<path d="M180 75 L233 75" class="arrow"/><path d="M405 75 L458 75" class="arrow"/></svg><figcaption>Observability Cloud connects to the search head on port 8089 as a service account you create. Searches run in Splunk Enterprise and the logs stay there.</figcaption></figure>
+<div class="callout callout--warning"><span class="callout__title">Source and status of this section</span><p>Written from the Splunk documentation <a href="https://help.splunk.com/en/splunk-observability-cloud/manage-data/view-splunk-platform-logs/set-up-log-observer-connect-for-splunk-enterprise" target="_blank" rel="noopener noreferrer">Set up Log Observer Connect for Splunk Enterprise</a> and <a href="https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/10.6/secure-splunk-platform-communications-with-transport-layer-security-certificates/configure-and-install-certificates-in-splunk-enterprise-for-splunk-log-observer-connect" target="_blank" rel="noopener noreferrer">Configure and install certificates for Log Observer Connect</a>, read on 10 November 2026. It has not been run against a live Splunk Enterprise instance. The OpenSSL commands in Step K were run locally with a throwaway CA to check the file order and the first-certificate extraction. Settings change between releases, so use the current documentation as the reference.</p></div>
+<div class="callout callout--info"><span class="callout__title">Is it available in your org?</span><p>Log Observer Connect is supported in realm <strong>us1</strong>, with Splunk Enterprise 9.0.1 or higher. It is not available for Splunk Cloud Platform trials, and it cannot read logs from a GovCloud environment. The documentation does not say whether Free Edition orgs can add this connection, so open <strong>Logs &rarr; Logs connections</strong> in the org first and confirm that <strong>Add new connection</strong> is offered before you promise it to a customer.</p></div>
+<div class="callout"><span class="callout__title">How this differs from the Collector path</span><p>The Collector steps earlier in this page send telemetry <em>to</em> Splunk Observability Cloud. Log Observer Connect works the other way: Observability Cloud reaches <em>into</em> a Splunk Enterprise you already run. The demo's logs go to its own OpenSearch, not to Splunk Enterprise, so they will not appear here unless you also send them to Splunk Enterprise (for example with the <a href="https://help.splunk.com/en/splunk-observability-cloud/manage-data/splunk-distribution-of-the-opentelemetry-collector/get-started-with-the-splunk-distribution-of-the-opentelemetry-collector/collector-components/exporters/splunk-hec-exporter" target="_blank" rel="noopener noreferrer">Splunk HEC exporter</a>).</p></div>
+<h3>What you need</h3>
+<div class="table-wrap"><table class=""><thead><tr><th>Item</th><th>Detail</th></tr></thead><tbody><tr><td>Roles</td><td>Administrator in Splunk Observability Cloud and administrator in Splunk Enterprise. Without the Observability Cloud admin role you will not see Logs connections.</td></tr>
+<tr><td>Splunk Enterprise</td><td>Version 9.0.1 or higher, and token authentication active on the service account (see <em>Enable or disable token authentication</em> in the Securing Splunk Enterprise documentation).</td></tr>
+<tr><td>Service account</td><td>A username and password you create in Step I.</td></tr>
+<tr><td>Splunk platform URL</td><td>The search head, or the load balancer in front of a search head cluster, reachable on port 8089 from the Observability Cloud addresses below. Log Observer Connect does not need to reach the deployer or the indexers.</td></tr>
+<tr><td>Certificate</td><td>A TLS certificate for the management port (Step K).</td></tr>
+</tbody></table></div>
+<h3>Open port 8089 to the us1 addresses</h3>
+<p>Allow inbound traffic on port <code>8089</code> to your search head (or its load balancer) from these four realm us1 addresses. Check with your security team before you change firewall rules or AWS security groups.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>us1 source addresses (allow to port 8089)</span><button class="btn-copy" type="button">Copy</button></div><pre><code>44.230.152.35
+44.231.27.66
+44.225.234.52
+44.230.82.104</code></pre></div>
+<p>If your Splunk Enterprise host is the machine you are working on, you can confirm the management port is listening before you go further:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>curl -k -s -o /dev/null -w &quot;%{http_code}\n&quot; https://localhost:8089/services/server/info</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>401</code></pre></div>
+<p>A <code>401</code> is good: the port answers and wants credentials. This only proves the local listener. Reachability from the us1 addresses is tested by the connection itself in Step L.</p>
+</section>
+<section id="loc-role"><div class="step-meta"><span class="step-badge">Step I</span><span class="step-time">~10 min</span></div><h2>Create the service account in Splunk Enterprise</h2>
+<p>Observability Cloud runs every search through one Splunk Enterprise service account. Create a role for it, then a user with that role. In Splunk Enterprise, go to <strong>Settings &rarr; Roles</strong> and create (or choose) the role, then set the following.</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Tab</th><th>Setting</th><th>Value</th></tr></thead><tbody><tr><td>Indexes</td><td>Included column</td><td>Deselect <code>*</code> (all internal indexes). Select only the indexes you want users to search in Log Observer Connect.</td></tr>
+<tr><td>Capabilities</td><td>Selected</td><td><code>edit_tokens_own</code> and <code>search</code>.</td></tr>
+<tr><td>Capabilities</td><td>Not selected</td><td><code>indexes_list_all</code>.</td></tr>
+<tr><td>Resources</td><td>Role search job limit and User search job limit, Standard search</td><td>40 for both (assumes 10 Log Observer Connect users).</td></tr>
+<tr><td>Resources</td><td>Real-time search limit, role and user</td><td>0 for both.</td></tr>
+<tr><td>Resources</td><td>Role search time window limit: maximum time window</td><td>Custom time, <code>2592000</code> seconds (30 days).</td></tr>
+<tr><td>Resources</td><td>Role search time window limit: earliest searchable event time</td><td>Custom time, <code>7776000</code> seconds (90 days).</td></tr>
+<tr><td>Resources</td><td>Disk space limit, Standard search</td><td>1000 MB.</td></tr>
+</tbody></table></div>
+<div class="callout callout--info"><span class="callout__title">Sizing the search limit</span><p>Each active Log Observer Connect user triggers about four back-end searches whenever they search. Multiply your number of users by 4 for the Standard search limit: 10 users gives 40, 20 users gives 80. Three people searching at the same moment cause about 12 searches in Splunk Enterprise, all under this one account.</p></div>
+<p>Then create the user: <strong>Settings &rarr; Users &rarr; New user</strong>. Give it a strong password and assign the role you just created. Make sure token authentication is active for this account, as the prerequisite above says; if the connection later fails to authenticate, check this first.</p>
+</section>
+<section id="loc-wlm"><div class="step-meta"><span class="step-badge">Step J</span><span class="step-time">~5 min</span></div><h2>Limit long searches with a workload rule</h2>
+<p>Add a workload rule that stops any search by the service account that runs longer than five minutes. It keeps Log Observer Connect responsive and makes it less likely that its searches queue. In Splunk Enterprise, create it under <strong>Settings &rarr; Workload Management &rarr; Workload Rules</strong>, following <em>Create a Workload Rule in Splunk Web</em> in the Splunk Enterprise documentation, with these values:</p>
+<div class="table-wrap"><table class=""><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Predicate</td><td><code>user=&lt;your_Log_Observer_Connect_service-account_name&gt; AND runtime&gt;5m</code></td></tr>
+<tr><td>Schedule</td><td>Always on</td></tr>
+<tr><td>Action</td><td>Abort search</td></tr>
+</tbody></table></div>
+<p>Replace the placeholder with the username from Step I. After you save, the rule shows on the <strong>Workload Rules</strong> tab.</p>
+</section>
+<section id="loc-cert"><div class="step-meta"><span class="step-badge">Step K</span><span class="step-time">~20 min</span></div><h2>Secure the management port with a certificate</h2>
+<p>Log Observer Connect secures the connection to your management port (8089) with a certificate you install on the search head. You have two options: sign one yourself (fastest, fine for a lab) or get one from a certificate authority such as Let's Encrypt or Sectigo (the more secure choice). The commands below follow the Splunk documentation for the self-signed route and use <code>$SPLUNK_HOME/etc/auth/sloccerts</code>, a new directory, so they do not overwrite the certificates that ship with Splunk Enterprise.</p>
+<h3>1. Create a certificate authority</h3>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>mkdir $SPLUNK_HOME/etc/auth/sloccerts
+cd $SPLUNK_HOME/etc/auth/sloccerts
+
+$SPLUNK_HOME/bin/splunk cmd openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-256-cbc -out myCAPrivateKey.key
+# enter a password when prompted
+
+$SPLUNK_HOME/bin/splunk cmd openssl req -new -key myCAPrivateKey.key -out myCACertificate.csr -addext &quot;basicConstraints=critical,CA:TRUE&quot; -addext &quot;keyUsage=critical,keyCertSign,cRLSign&quot;
+# enter the key password; leave Common Name blank
+
+echo -e &quot;# root-ssl-extensions.cnf\n[v3_ca]\nbasicConstraints = critical,CA:TRUE\nkeyUsage = critical,keyCertSign,cRLSign\nsubjectKeyIdentifier = hash&quot; &gt; root-ssl-extensions.cnf
+
+$SPLUNK_HOME/bin/splunk cmd openssl x509 -req -in myCACertificate.csr -signkey myCAPrivateKey.key -extensions v3_ca -extfile ./root-ssl-extensions.cnf -out myCACertificate.pem -days 3650
+# enter the key password</code></pre></div>
+<h3>2. Create and sign the server certificate</h3>
+<p>When the <code>req -new</code> command asks for a Common Name, enter the host name you will use in the Splunk platform URL. The documentation only says to leave the Common Name blank for the authority, not for the server certificate.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>$SPLUNK_HOME/bin/splunk cmd openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -aes-256-cbc -out mySplunkWebPrivateKey.key
+# enter a password when prompted
+
+# Splunk Web does not support password-protected keys, so remove the password:
+$SPLUNK_HOME/bin/splunk cmd openssl pkey -in mySplunkWebPrivateKey.key -out mySplunkWebPrivateKey.key.nopass &amp;&amp; mv mySplunkWebPrivateKey.key.nopass mySplunkWebPrivateKey.key
+$SPLUNK_HOME/bin/splunk cmd openssl pkey -in mySplunkWebPrivateKey.key -check -noout
+
+$SPLUNK_HOME/bin/splunk cmd openssl req -new -key mySplunkWebPrivateKey.key -out mySplunkWebCert.csr -addext &quot;basicConstraints = critical,CA:FALSE&quot; -addext &quot;keyUsage = critical,digitalSignature,keyEncipherment&quot; -addext &quot;extendedKeyUsage = serverAuth,clientAuth&quot;
+
+echo -e &quot;#server-ssl-extensions.cnf \n[v3_srv]\n basicConstraints = critical,CA:FALSE\nkeyUsage = critical,digitalSignature,keyEncipherment\n extendedKeyUsage = serverAuth,clientAuth\n&quot; &gt; server-ssl-extensions.cnf
+
+$SPLUNK_HOME/bin/splunk cmd openssl x509 -req -in mySplunkWebCert.csr -CA myCACertificate.pem -extensions v3_srv -extfile ./server-ssl-extensions.cnf -CAkey myCAPrivateKey.key -CAcreateserial -out mySplunkWebCert.pem -days 1095
+# enter the CA key password</code></pre></div>
+<h3>3. Combine the files and check the signature</h3>
+<p>Order matters: server certificate first, then the authority certificate, then the key in the final file. The file must be PEM format.</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>cat mySplunkWebCert.pem myCACertificate.pem &gt; mySplunkWebCertificate.pem
+cat mySplunkWebCertificate.pem mySplunkWebPrivateKey.key &gt; myFinalCert.pem
+
+$SPLUNK_HOME/bin/splunk cmd openssl verify -CAfile ./myCACertificate.pem ./mySplunkWebCertificate.pem</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code>./mySplunkWebCertificate.pem: OK</code></pre></div>
+<p>If you use a third-party certificate instead of steps 1 and 2, start here: combine its server certificate, intermediate certificates and root (if required), in that order, into one PEM file, then add the private key to make the final file.</p>
+<h3>4. Install it on the management port</h3>
+<p>Edit the files in <code>$SPLUNK_HOME/etc/system/local</code>, never the ones in <code>etc/default</code>. Put these settings in <code>server.conf</code>:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>server.conf</span><button class="btn-copy" type="button">Copy</button></div><pre><code>[general]
+serverName = mysplunkenterpriseserver.mycompany.com
+
+[sslConfig]
+serverCert = /opt/splunk/etc/auth/sloccerts/myFinalCert.pem
+requireClientCert = false
+sslRootCAPath = $SPLUNK_HOME/etc/auth/sloccerts/myCACertificate.pem</code></pre></div>
+<p>and these in <code>web.conf</code>:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>web.conf</span><button class="btn-copy" type="button">Copy</button></div><pre><code>[settings]
+enableSplunkWebSSL = true
+serverCert = /opt/splunk/etc/auth/sloccerts/myFinalCert.pem</code></pre></div>
+<p>Use your own server name and your own absolute path to <code>myFinalCert.pem</code>. Then restart splunkd, which interrupts searching on that instance, so schedule it:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>$SPLUNK_HOME/bin/splunk restart splunkd</code></pre></div>
+<h3>5. Get the certificate you will paste into Observability Cloud</h3>
+<p>The guided setup in Step L asks for <strong>only the first certificate in the chain</strong>, which is the server certificate. This command prints just the first certificate from the combined file:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>$SPLUNK_HOME/bin/splunk cmd openssl x509 -in $SPLUNK_HOME/etc/auth/sloccerts/mySplunkWebCertificate.pem</code></pre></div>
+<p>Copy everything from <code>-----BEGIN CERTIFICATE-----</code> to <code>-----END CERTIFICATE-----</code>, with no key and no second certificate.</p>
+<div class="callout callout--warning"><span class="callout__title">Search head clusters</span><p>The documentation describes one instance. If Log Observer Connect will reach a search head cluster through a load balancer, work out with your Splunk administrators how the certificate and the <code>server.conf</code> and <code>web.conf</code> changes reach each member, using your normal change process. This guide has not tested that case.</p></div>
+</section>
+<section id="loc-connect"><div class="step-meta"><span class="step-badge">Step L</span><span class="step-time">~10 min</span></div><h2>Add the connection in Observability Cloud (us1)</h2>
+<p>Now connect from the Observability Cloud side, in realm us1. You need to be an administrator.</p>
+<ol>
+<li>Open <a href="https://app.us1.signalfx.com/#/home" target="_blank" rel="noopener noreferrer">Observability Cloud (US1)</a> and go to <strong>Logs &rarr; Logs connections</strong>, then select <strong>Add new connection</strong>. If you do not see it, you are not an administrator in Observability Cloud.</li>
+<li>Select <strong>Splunk Enterprise</strong>. The guided setup now walks through the Splunk Enterprise steps you completed in Steps I to K. When you have finished them, continue.</li>
+<li>On the certificate page, paste the first certificate from Step K, then select <strong>Next</strong>.</li>
+<li>On the <strong>Set up Observability Cloud</strong> page, enter these five values, then select <strong>Save and continue</strong>:</li>
+</ol>
+<div class="table-wrap"><table class=""><thead><tr><th>Field</th><th>What to enter</th></tr></thead><tbody><tr><td>Service account username</td><td>The user you created in Step I.</td></tr>
+<tr><td>Password</td><td>That user's password.</td></tr>
+<tr><td>Splunk platform URL</td><td>The URL of your search head, or of the load balancer in front of the search head cluster, reachable on port 8089 from the us1 addresses in Step H. The guided page shows the expected format.</td></tr>
+<tr><td>Connection name</td><td>Anything descriptive. Each connection needs a unique name.</td></tr>
+<tr><td>Certificate</td><td>The first certificate, as in Step K.</td></tr>
+</tbody></table></div>
+<ol start="5">
+<li>On <strong>Configure permissions</strong>, choose which Observability Cloud users get access to this connection and which Splunk Enterprise indexes they can use.</li>
+<li>Select <strong>Save and activate</strong>.</li>
+</ol>
+<div class="callout callout--warning"><span class="callout__title">Keep the secrets out of the repo</span><p>The service account password and private keys belong in a password manager or secrets store. Never put them in this repository, a ticket, or chat. The certificate you paste is the public one, not the key.</p></div>
+</section>
+<section id="loc-verify"><div class="step-meta"><span class="step-badge">Step M</span><span class="step-time">~5 min</span></div><h2>Verify the connection</h2>
+<ol>
+<li>In Observability Cloud, open Log Observer, choose your new connection and an index you allowed, and run a search over the last hour. You should see events from Splunk Enterprise.</li>
+<li>On the search head, as an administrator, confirm the searches arrive from the service account. This reads Splunk's audit index, which the service account itself cannot read:</li>
+</ol>
+<div class="code-block" data-copy><div class="code-block__header"><span>SPL on the search head</span><button class="btn-copy" type="button">Copy</button></div><pre><code>index=_audit action=search user=&lt;your_service-account_name&gt; | head 10</code></pre></div>
+<p>Each Log Observer search should produce about four back-end searches under that account. If you see them, the connection works end to end.</p>
+</section>
+<section id="loc-trouble"><h2>Troubleshooting Log Observer Connect</h2><div class="table-wrap"><table class=""><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody><tr><td>Add new connection is missing</td><td>You are not an administrator in Observability Cloud, or the org does not offer the connection. Ask an org admin, and confirm availability as described in Step H.</td></tr>
+<tr><td>The connection test times out</td><td>Port <code>8089</code> is not reachable from the four us1 addresses. Check the firewall or AWS security group, and that the URL points at the search head or the load balancer in front of the cluster.</td></tr>
+<tr><td>Certificate error</td><td>You pasted the whole chain or the key instead of only the first certificate. Or splunkd was not restarted after editing <code>server.conf</code> and <code>web.conf</code>. Or the certificate is not valid for the host name in the URL.</td></tr>
+<tr><td>Authentication fails</td><td>Token authentication is not active for the service account, the password is wrong, or the role is missing <code>edit_tokens_own</code> or <code>search</code>.</td></tr>
+<tr><td>The index is missing or the search is empty</td><td>The role's Indexes tab does not include that index, <code>indexes_list_all</code> is selected instead of specific indexes, or the data is older than the 90-day earliest searchable time.</td></tr>
+<tr><td>Searches queue or are aborted</td><td>Raise the Standard search limit to users times 4, or review the 5-minute workload rule from Step J.</td></tr>
+<tr><td>Not supported</td><td>Splunk Enterprise older than 9.0.1, a Splunk Cloud Platform trial, or a GovCloud environment.</td></tr>
+</tbody></table></div><div class="callout"><span class="callout__title">More help</span><p>The Splunk documentation has a page called <em>Troubleshoot Log Observer Connect setup</em>, linked from <a href="https://help.splunk.com/en/splunk-observability-cloud/manage-data/view-splunk-platform-logs/set-up-log-observer-connect-for-splunk-enterprise" target="_blank" rel="noopener noreferrer">the setup page</a>. The rows above are common causes inferred from the setup steps, not an exhaustive list.</p></div>
 </section>
 <section id="cleanup"><div class="step-meta"><span class="step-badge">Step 8</span></div><h2>Cleanup</h2>
 <div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm uninstall otel-demo -n otel-demo
