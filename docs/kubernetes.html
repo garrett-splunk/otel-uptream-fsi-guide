@@ -177,9 +177,9 @@ otel-collector-agent-28667         1/1     Running   0          111s
 <rect x="10" y="45" width="150" height="80" rx="10" class="node"/><text x="85" y="76" class="lbl">your workloads</text><text x="85" y="94" class="sub">already emit OTLP</text>
 <rect x="215" y="35" width="190" height="100" rx="10" class="node-warm"/><text x="310" y="60" class="lbl">your existing Collector</text><text x="310" y="80" class="sub">existing pipelines: unchanged</text><text x="310" y="98" class="sub">+ traces/splunk, metrics/splunk</text><text x="310" y="116" class="sub">token from a Secret</text>
 <rect x="470" y="18" width="160" height="44" rx="8" class="node"/><text x="550" y="37" class="lbl">current backend</text><text x="550" y="52" class="sub">keeps receiving data</text>
-<rect x="470" y="108" width="160" height="44" rx="8" class="node-accent"/><text x="550" y="127" class="lbl">Splunk Observability</text><text x="550" y="142" class="sub">otlphttp/splunk</text>
+<rect x="470" y="108" width="160" height="44" rx="8" class="node-accent"/><text x="550" y="127" class="lbl">Splunk Observability</text><text x="550" y="142" class="sub">otlp_http/splunk</text>
 <path d="M160 85 L213 85" class="arrow"/><path d="M405 70 L468 45" class="arrow"/><path d="M405 100 L468 125" class="arrow"/></svg><figcaption>You add a second destination next to the first. Nothing about the existing pipelines changes until you decide to cut over in Step G.</figcaption></figure>
-<div class="callout callout--warning"><span class="callout__title">What was and was not tested</span><p>The upstream <code>opentelemetry-collector</code> Helm chart was rendered with <code>helm template</code> at versions 0.110.0 and 0.178.2: the new pipelines appear next to the existing ones, and the token environment variables render from a Secret. The ingest endpoints were verified live in Path A (SDK direct to us1), and the demo's own Collector sent live traces and metrics in Steps 1 to 7. The exact <code>otlphttp/splunk</code> block below has not been run on a live Collector, and the Operator and plain-manifest variants are untested. Step D includes a dry run so you can check before anything changes.</p></div>
+<div class="callout callout--warning"><span class="callout__title">What was and was not tested</span><p>These steps were run end to end on a local minikube cluster against a US1 org: a stand-in Collector release (upstream <code>opentelemetry-collector</code> chart <code>0.178.2</code>, Collector <code>0.163.2</code>) with sample applications sending OTLP traces and metrics, then Steps A to D as written. The Collector kept its existing pipeline, the new pipelines exported traces and metrics to Splunk with the token coming from a Secret, and the services and a custom metric appeared in Splunk under the environment set in Step C. The chart was also rendered with <code>helm template</code> at 0.110.0. Not tested: the Operator and plain-manifest variants, Step F (applications that export directly), Step G (cut-over and rollback) beyond rendering, and a cluster with a pre-existing <code>extraEnvs</code> list.</p></div>
 <h3>Before you start</h3>
 <ul><li>Complete <a href="#preflight">Step 1</a> so <code>REALM</code> and <code>ACCESS_TOKEN</code> (an <strong>Ingest</strong>-scope token) are set in this terminal.</li>
 <li>You can run <code>kubectl</code> and <code>helm</code> against the cluster, with permission to upgrade the Collector release and create a Secret in its namespace.</li></ul>
@@ -231,7 +231,7 @@ config:
           value: eks-prod-east      # name this cluster or environment
           action: insert            # only sets it when the app did not
   exporters:
-    otlphttp/splunk:
+    otlp_http/splunk:
       traces_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/trace/otlp
       metrics_endpoint: https://ingest.${env:SPLUNK_REALM}.observability.splunkcloud.com/v2/datapoint/otlp
       headers:
@@ -241,21 +241,21 @@ config:
       traces/splunk:
         receivers: [otlp]
         processors: [resource/splunk, batch]
-        exporters: [otlphttp/splunk]
+        exporters: [otlp_http/splunk]
       metrics/splunk:
         receivers: [otlp]
         processors: [resource/splunk, batch]
-        exporters: [otlphttp/splunk]
+        exporters: [otlp_http/splunk]
 EOF</code></pre></div>
 <p>The quoted <code>'EOF'</code> matters: it stops the shell from expanding <code>${env:...}</code>, which the Collector resolves at startup. Edit the realm and the environment name before you save.</p>
 <h3>What each part does</h3>
 <div class="table-wrap"><table class=""><thead><tr><th>Block</th><th>Purpose</th></tr></thead><tbody><tr><td><code>extraEnvs</code></td><td>Gives the Collector <code>SPLUNK_REALM</code> and the token from the Secret in Step B.</td></tr>
-<tr><td><code>otlphttp/splunk</code></td><td>Sends traces to <code>/v2/trace/otlp</code> and metrics to <code>/v2/datapoint/otlp</code> on <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>, with the token in the <code>X-SF-Token</code> header. The older <code>signalfx.com</code> hostname still works.</td></tr>
+<tr><td><code>otlp_http/splunk</code></td><td>Sends traces to <code>/v2/trace/otlp</code> and metrics to <code>/v2/datapoint/otlp</code> on <code>ingest.&lt;realm&gt;.observability.splunkcloud.com</code>, with the token in the <code>X-SF-Token</code> header. The older <code>signalfx.com</code> hostname still works.</td></tr>
 <tr><td><code>resource/splunk</code></td><td>Adds <code>deployment.environment</code> so the services show under an environment in APM. <code>insert</code> never overwrites a value the application already set.</td></tr>
 <tr><td><code>traces/splunk, metrics/splunk</code></td><td>New pipelines. Because they are new keys, Helm adds them without touching your existing pipelines.</td></tr>
 </tbody></table></div>
 <div class="callout callout--warning"><span class="callout__title">If extraEnvs is already set</span><p>Helm replaces a list instead of merging it, so the <code>extraEnvs</code> above would drop your existing entries. Open <code>current-values.yaml</code>, copy your existing entries into <code>add-splunk.yaml</code> under <code>extraEnvs</code>, and keep the two <code>SPLUNK_*</code> entries.</p></div>
-<div class="callout callout--info"><span class="callout__title">Exporter name depends on the Collector version</span><p>Older Collectors, including the 0.116.0 build used in Path A, call the exporter <code>otlphttp</code>. Newer releases call it <code>otlp_http</code>. With the Helm chart you can keep writing <code>otlphttp/splunk</code>: both chart versions I rendered accepted it, and 0.178.2 rewrote it to <code>otlp_http/splunk</code> in the final config. With the Operator or a plain ConfigMap there is no rewrite, so use the name your Collector version expects. A wrong name fails at startup with <code>unknown type</code>.</p></div>
+<div class="callout callout--info"><span class="callout__title">Exporter name depends on the chart and Collector version</span><p>This guide was run on chart <code>0.178.2</code> (Collector <code>0.163.2</code>), where the exporter is called <code>otlp_http</code>. Older releases, including chart <code>0.110.0</code> and the 0.116.0 Collector used in Path A, call it <code>otlphttp</code>. The Helm chart still rewrites the old spelling for you, but the Step D dry run prints a <code>[DEPRECATION]</code> line about <code>otlphttp</code> and says the rewrite will be removed, so use the name your chart expects. If the dry run shows that line, change <code>otlphttp</code> to <code>otlp_http</code> in <code>add-splunk.yaml</code>. If the pods crash with <code>unknown type: &quot;otlp_http&quot;</code>, your Collector is older: use <code>otlphttp</code>. With the Operator or a plain ConfigMap there is no rewrite at all, so use the name your Collector version expects.</p></div>
 <div class="callout"><span class="callout__title">Other things to adjust</span><p>If your receiver is not named <code>otlp</code>, change it in both pipelines. If your metrics come from a scrape receiver such as <code>prometheus</code>, add it to the <code>receivers</code> list of <code>metrics/splunk</code>. Only signals that arrive at the Collector can be forwarded. If your existing pipelines use <code>memory_limiter</code>, add it first in the <code>processors</code> list of both new pipelines.</p></div>
 </section>
 <section id="ex-apply"><div class="step-meta"><span class="step-badge">Step D</span><span class="step-time">~5 min</span></div><h2>Apply with Helm</h2>
@@ -265,16 +265,25 @@ helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm
 helm repo update</code></pre></div>
 <p>First, a dry run. It renders the result without changing the cluster, and the filter shows only the lines you care about:</p>
 <div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS \
-  --version $CHART_VERSION --reuse-values -f add-splunk.yaml --dry-run \
+  --version $CHART_VERSION --reuse-values -f add-splunk.yaml --dry-run=client \
   | grep -E &quot;traces/splunk|metrics/splunk|SPLUNK_|splunk-o11y-token&quot;</code></pre></div>
-<p>You should see both new pipelines and the Secret reference. If the command errors, fix it now, before the real upgrade. Then apply:</p>
+<p>You should see both new pipelines and the Secret reference. Helm 4 warns that the bare <code>--dry-run</code> is deprecated, so the command uses <code>--dry-run=client</code>, which Helm 3.13 and newer also accept; on an older Helm 3, use plain <code>--dry-run</code>. A <code>[DEPRECATION]</code> line about <code>otlphttp</code> means the exporter name needs the change described in Step C. If the command errors, fix it now, before the real upgrade. Then apply:</p>
 <div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS \
   --version $CHART_VERSION --reuse-values -f add-splunk.yaml</code></pre></div>
 <p>The chart adds a checksum of the config to the pod template, so the Collector pods restart on their own. Watch them, then check the logs for export problems:</p>
-<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS get pods -w          # wait for the new pods to be Running
-kubectl -n $NS logs -l app.kubernetes.io/instance=$RELEASE --tail=50 \
-  | grep -iE &quot;error|401|404|unknown type|not configured&quot;</code></pre></div>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS get pods -w          # wait for the new pod to be Running, then press Ctrl-C</code></pre></div>
+<p>Then check the Collector logs for export problems:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>kubectl -n $NS logs -l app.kubernetes.io/instance=$RELEASE --tail=100 \
+  | grep -iE &quot;exporting failed|status code 4|unauthorized|forbidden|unknown type|not configured&quot;</code></pre></div>
 <div class="code-block code-block--out"><div class="code-block__header"><span>expected output</span></div><pre><code># (no matching lines: silence is good)</code></pre></div>
+<p>Silence only means no errors were logged. To confirm data actually left the Collector for Splunk, read its own counters. This uses the Kubernetes API server as a proxy to the Collector's metrics port (8888), so nothing is exposed. Allow a minute after the pods start, and make sure traffic is flowing. The numbers grow while your applications send data:</p>
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>POD=$(kubectl -n $NS get pod -l app.kubernetes.io/instance=$RELEASE -o jsonpath=&#x27;{.items[0].metadata.name}&#x27;)
+kubectl get --raw &quot;/api/v1/namespaces/$NS/pods/${POD}:8888/proxy/metrics&quot; \
+  | grep -E &#x27;^otelcol_exporter_(sent|send_failed)_(spans|metric_points)&#x27; | grep splunk</code></pre></div>
+<div class="code-block code-block--out"><div class="code-block__header"><span>expected output (numbers will differ)</span></div><pre><code>otelcol_exporter_sent_metric_points{exporter=&quot;otlp_http/splunk&quot;,...,url_path=&quot;/v2/datapoint/otlp&quot;} 100
+otelcol_exporter_sent_spans{exporter=&quot;otlp_http/splunk&quot;,...,url_path=&quot;/v2/trace/otlp&quot;} 219
+# send_failed lines, if present, should stay at 0</code></pre></div>
+<p>If a counter is missing, no data of that type has been sent yet. If <code>send_failed</code> counters rise, read the error in the logs and see the troubleshooting table.</p>
 <div class="callout"><span class="callout__title">Release from a different chart?</span><p>Replace <code>open-telemetry/opentelemetry-collector</code> with the chart your release uses (<code>helm list</code> shows it), and keep <code>--version</code> and <code>--reuse-values</code>. Check that its values use the same <code>config:</code>, <code>extraEnvs:</code> structure; some vendor charts name these differently.</p></div>
 </section>
 <section id="ex-verify"><div class="step-meta"><span class="step-badge">Step E</span><span class="step-time">~5 min</span></div><h2>Confirm in Splunk Observability Cloud</h2>
@@ -312,7 +321,7 @@ kubectl -n $APP_NS set env deploy/$APP \
 <section id="ex-cutover"><div class="step-meta"><span class="step-badge">Step G</span><span class="step-time">~5 min</span></div><h2>Cut over, or roll back</h2>
 <p>Run both destinations side by side for as long as you want to compare. When the customer is satisfied, you can stop sending to the old backend, or keep both. To stop, edit the file that holds the complete values for the release (a stable copy is the <code>current-values.yaml</code> you saved in Step A, with your additions merged in). Do not use <code>--reuse-values</code> here, because the file is now the full set.</p>
 <ol><li>Export the current values: <code>helm get values $RELEASE -n $NS -o yaml &gt; cutover-values.yaml</code>.</li>
-<li>In <code>cutover-values.yaml</code>, under <code>config.service.pipelines.traces</code> and <code>metrics</code>, replace the old exporter with <code>otlphttp/splunk</code> and add <code>resource/splunk</code> to each <code>processors</code> list.</li>
+<li>In <code>cutover-values.yaml</code>, under <code>config.service.pipelines.traces</code> and <code>metrics</code>, replace the old exporter with <code>otlp_http/splunk</code> and add <code>resource/splunk</code> to each <code>processors</code> list.</li>
 <li>Delete the <code>traces/splunk</code> and <code>metrics/splunk</code> blocks and the old exporter definition.</li></ol>
 <p>The pipelines then look like this (your processor and receiver names may differ):</p>
 <div class="code-block" data-copy><div class="code-block__header"><span>yaml</span><button class="btn-copy" type="button">Copy</button></div><pre><code>config:
@@ -321,13 +330,13 @@ kubectl -n $APP_NS set env deploy/$APP \
       traces:
         receivers: [otlp]
         processors: [memory_limiter, resource/splunk, batch]
-        exporters: [otlphttp/splunk]
+        exporters: [otlp_http/splunk]
       metrics:
         receivers: [otlp]
         processors: [memory_limiter, resource/splunk, batch]
-        exporters: [otlphttp/splunk]</code></pre></div>
+        exporters: [otlp_http/splunk]</code></pre></div>
 <p>Check the render, then apply. A values file with the full config renders cleanly on chart 0.178.2:</p>
-<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS --version $CHART_VERSION -f cutover-values.yaml --dry-run | grep -A12 -E &quot;^        (traces|metrics):&quot;
+<div class="code-block" data-copy><div class="code-block__header"><span>bash</span><button class="btn-copy" type="button">Copy</button></div><pre><code>helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS --version $CHART_VERSION -f cutover-values.yaml --dry-run=client | grep -A12 -E &quot;^        (traces|metrics):&quot;
 helm upgrade $RELEASE open-telemetry/opentelemetry-collector -n $NS --version $CHART_VERSION -f cutover-values.yaml</code></pre></div>
 <h3>Roll back</h3>
 <p>Any time something looks wrong, return to the previous revision:</p>
@@ -337,7 +346,7 @@ helm rollback $RELEASE &lt;REVISION&gt; -n $NS          # pick the revision befo
 </section>
 <section id="ex-trouble"><h2>Troubleshooting this section</h2><div class="table-wrap"><table class=""><thead><tr><th>Symptom</th><th>Fix</th></tr></thead><tbody><tr><td><code>401 Unauthorized</code></td><td>The token is not an Ingest-scope token, or the Secret holds a different value. Recreate the Secret and restart the pods.</td></tr>
 <tr><td><code>unknown type: &quot;otlphttp&quot;</code> or <code>unknown type: &quot;otlp_http&quot;</code></td><td>The exporter name does not match the Collector version. Use the other spelling, or the Helm chart, which rewrites it.</td></tr>
-<tr><td><code>references exporter &quot;otlphttp/splunk&quot; which is not configured</code></td><td>The exporter block is missing or misspelled under <code>config.exporters</code>. Re-check <code>add-splunk.yaml</code>.</td></tr>
+<tr><td><code>references exporter &quot;otlp_http/splunk&quot; which is not configured</code></td><td>The exporter block is missing or misspelled under <code>config.exporters</code>. Re-check <code>add-splunk.yaml</code>.</td></tr>
 <tr><td><code>404 ... /v1/metrics</code> or <code>/v1/traces</code></td><td>The exporter was given <code>endpoint</code> instead of <code>traces_endpoint</code> and <code>metrics_endpoint</code>. Use the full URLs from Step C.</td></tr>
 <tr><td>Existing backend stopped receiving data</td><td>A pipeline's <code>exporters</code> list was replaced without the old exporter. Restore the old exporter in that list, or <code>helm rollback</code>.</td></tr>
 <tr><td><code>SPLUNK_ACCESS_TOKEN</code> is empty, or your other variables disappeared</td><td><code>extraEnvs</code> was replaced, not merged. Copy your existing entries into <code>add-splunk.yaml</code> (Step C) and upgrade again.</td></tr>
